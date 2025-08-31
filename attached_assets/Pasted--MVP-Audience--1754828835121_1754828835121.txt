@@ -1,0 +1,106 @@
+영어 학습용 앱을 만들려고하는데, 아래 요구를 “최소 비용/최소 설치/가시적 진행” 원칙으로 수행하세요.
+
+[앱 정의]
+- 목적: 영어 학습 웹앱(MVP). Audience(중·고생 / 대학생·일반 / 비즈니스) 선택 → 캐릭터 기본정보 입력 → 상황 프리셋 or 자유입력 → AI가 3줄 대화 생성 → TTS 재생 + 자막 표시.
+- 스택: 클라 React+Vite, 서버 Node/Express(동일 리포), 상태관리 최소(Zustand or Context), 스타일 Tailwind.
+- 지금 단계는 “뼈대 세팅 + 라우팅 + 상태 + 더미 화면”까지만. API 연동/모델 호출 금지.
+
+[과금/안전 가드레일]
+1) 패키지 설치 최소화: react, react-router-dom, zustand(or context), tailwind, express, cors 정도만. OpenAI/ElevenLabs SDK 설치 금지(후속 단계).
+2) 절대 실행 금지: 이미지/영상/대형 모델 호출, 빌드 최적화 플러그인 남발, devDependencies 과도 설치.
+3) 파일 구조 명확화: client/ 와 server/ 폴더, 환경변수는 .env.example만 만들고 실제 키는 비워둠.
+4) 스크립트: 루트 package.json에 "dev": 동시 실행(concurrently)만 추가. 배포/오토스케일 설정 금지.
+5) README에 실행법과 과금 주의 문구 추가: “API 키 넣기 전까지는 절대 외부 모델 호출 금지”.
+
+[수용 기준]
+- npm run dev 로 / → /character → /scenario → /playground 이동 가능.
+- Audience 선택에 따라 시나리오 프리셋(더미)이 다르게 표시.
+- /playground는 더미 데이터로 카드/버튼/자막 레이아웃만 보임.
+- 변경 파일 목록과 요약, 남은 해야 할 일(TODO) 섹션 출력.
+
+[AI]
+- AI: OpenAI (GPT-4 계열 for text, DALL·E for image), ElevenLabs (TTS)
+- AI 모델은 과금에 따라 더 좋은 AI 모델을 선택 할 수 있으면 좋음 GPT 5 포함
+
+1) / (홈) : Audience 선택 카드 3개
+   - Middle/High School
+   - College/General
+   - Business
+   선택 시 전역 상태에 audience 저장, 다음 단계로 이동.
+2) /character : 이름, 성별(male/female), 스타일(cheerful/calm/strict) 입력 폼.
+3) /scenario : 주제 프리셋 드롭다운(프리셋은 audience에 따라 다름) + 자유 입력.
+4) /playground : 생성된 캐릭터 이미지, 3줄 대화, 각 줄의 TTS 재생 버튼, 자막 표시 영역(문장 누르면 강조).
+5) 전역 상태 구조 설계: { audience, character {name, gender, style, imageUrl}, scenario {presetKey?, freeText}, dialogue: string[], audioUrls: string[] }
+6) Tailwind로 기본 깔끔한 UI. 모바일 대응.
+7) 프리셋: src/constants/presets.ts 생성.
+   - audience별 시나리오 주제 프리셋 6개씩:
+     - Middle/High: cafeteria, club activity, homework help, school trip, new friend, confidence talk
+     - College/General: travel, cafe order, job interview(초급), roommate chat, hobby club, presentation basics
+     - Business: email etiquette, meeting opener, negotiation basics, small talk, deadline follow-up, presentation Q&A
+8) /scenario 페이지에서 audience에 맞는 프리셋을 드롭다운으로 표시. 선택 시 scenario.presetKey 저장, 자유입력 시 scenario.freeText 저장.
+9) ‘다음’ 버튼 클릭 시 /playground 이동
+10) 캐릭터 이미지 생성 
+/playground 진입 시 ‘캐릭터 이미지 생성’ 버튼을 누르면 DALL·E로 이미지 생성.
+지시:
+(1) server/api/openai.ts 생성: OpenAI SDK 초기화 헬퍼.
+(2) POST /api/generate-image:
+   입력: { name, gender, style, audience } 
+   프롬프트 규칙:
+     - cartoon-style English tutor
+     - tone/style은 style 값으로 반영 (cheerful/calm/strict)
+     - background: simple, classroom or cafe depending on audience (middle-high=classroom, general=cafe, business=office)
+   출력: { imageUrl }
+(3) 에러 핸들링(타임아웃, 잔여 크레딧 없을 때 안내 메시지).
+(4) 클라 /playground에 “캐릭터 이미지 생성” 버튼 추가→API 호출→imageUrl 상태 저장→즉시 렌더.
+(5) 버튼은 로딩 상태/에러 상태 표시.
+11) 대화 생성 
+지시:
+(1) POST /api/generate-dialogue:
+   입력: { audience, character: {name, gender, style}, scenario: {presetKey?, freeText?} }
+   시스템 프롬프트 규칙:
+     - 역할: Friendly English tutor matching ‘audience’.
+     - style 반영: cheerful/calm/strict
+     - 어휘 난이도: audience별 CEFR 가이드라인 적용 (중고= A2~B1, 일반= B1~B2, 비즈= B2~C1)
+     - 출력 형식: JSON { "lines": ["...", "...", "..."], "focus_phrases": ["자연스러운 원어민 표현 3개"] }
+   프롬프트 예:
+     “You are {name}, an English tutor. Audience: {audience}. Style: {style}. Scenario: {presetKey OR freeText}. Generate exactly 3 short lines the tutor would say, and 3 native-like focus phrases appropriate for this audience.”
+(2) 클라 /playground에서 “대사 생성” 버튼 → API 호출 → dialogue[]와 focus_phrases[] 렌더.
+(3) focus_phrases는 하이라이트 박스로 별도 표기.
+
+AC:
+- 3줄 대사와 3개 표현이 JSON으로 안정적으로 반환.
+- audience 바꾸면 어휘/톤이 달라짐.
+12) TTS(목소리 선택, ElevenLabs) + 자막 동기화
+목표: 각 문장을 TTS로 변환하고, 재생 시 해당 자막 하이라이트.
+지시:
+1) POST /api/tts:
+   입력: { text, voiceId } 
+   - voiceId 드롭다운 제공 (female_friendly, male_calm, business_formal 등 3~4개)
+   - 반환: { audioUrl } (서버가 임시 파일 저장 후 정적호스팅 or signed URL 응답)
+2) 클라:
+   - dialogue 각 줄마다 “재생” 버튼과 자막.
+   - 누르면 해당 줄의 오디오 로드 & 플레이, 재생 중인 줄만 강조 스타일 적용.
+3) 네트워크 에러/오디오 에러 처리.
+AC:
+- 각 줄별 오디오 재생 가능.
+- 재생 중인 자막만 강조, 끝나면 강조 해제.
+- voiceId 변경 시 새 오디오 재생.
+12) "즉시 보이는 영상처럼" 연출(라이트버전)
+목표: ‘영상 느낌’을 주는 UI 연출 구현 (실제 영상 생성 X, 속도 최적).
+지시:
+1) 캐릭터 이미지에 간단한 모션(살짝 흔들림, 표정 전환 오버레이 2~3종).
+2) 대사 재생 시 캐릭터 이미지에 subtle scale-in/out, 말풍선 애니메이션.
+3) 배경 테마: audience별 배경 그라디언트 (중고=파스텔, 일반=코지, 비즈=딥블루)
+4) CSS만으로 구현. 외부 애니메이션 라이브러리는 최소화.
+AC:
+- 유저 체감이 “짧은 영상 클립”처럼 느껴진다.
+- 성능 저하 없고 모바일에서도 부드럽다.
+13) 품질 체크리스트 & 오류 방지
+다음 체크리스트를 통과할 때까지 수정:
+- 404/에러 라우팅이 깔끔한가?
+- API 호출 실패 시 사용자 피드백이 명확한가?
+- .env 예시 파일(.env.example) 제공되었는가?
+- README에 실행 순서/키 발급 링크/요금 주의사항이 명시되었는가?
+- 모바일 브레이크포인트에서 레이아웃 깨짐 없는가?
+- API 호출 버튼의 중복 클릭 방지 처리(loading/disabled)가 되어 있는가?
+14) 적정 요금제 기능 필요

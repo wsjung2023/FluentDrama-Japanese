@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "FluentDrama-Japanese",
+    "slug": "fluentdrama-japanese",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fluentdrama.japanese"
+    },
+    "android": {
+      "package": "com.fluentdrama.japanese",
+      "permissions": ["RECORD_AUDIO", "INTERNET"]
+    },
+    "web": {
+      "bundler": "vite",
+      "output": "static"
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow FluentDrama-Japanese to access your microphone for voice practice."
+        }
+      ]
+    ],
+    "scheme": "fluentdrama-japanese"
+  }
+}
