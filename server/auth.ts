@@ -80,8 +80,6 @@ export function setupAuth(app: Express) {
           }
           
           console.log("User found, checking password...");
-          console.log("Stored password:", user.password);
-          console.log("Provided password:", password);
           
           // Use proper password comparison
           if (!user.password || !(await comparePasswords(password, user.password))) {
@@ -106,11 +104,9 @@ export function setupAuth(app: Express) {
         {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          callbackURL: process.env.REPLIT_DEV_DOMAIN
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/google/callback`
-            : process.env.REPL_SLUG && process.env.REPL_OWNER
-            ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/google/callback`
-            : `http://localhost:5000/api/google/callback`,
+          callbackURL: process.env.GOOGLE_CALLBACK_URL || 
+            `https://fluent-drama-japanese.replit.app/api/google/callback`,
+          proxy: true, // Trust proxy headers for correct redirect URLs
         },
         async (accessToken, refreshToken, profile, done) => {
           try {
@@ -227,14 +223,25 @@ export function setupAuth(app: Express) {
 
   // Google OAuth routes - only setup if credentials are available
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    app.get("/api/google", 
-      passport.authenticate("google", { scope: ["profile", "email"] })
-    );
+    app.get("/api/google", (req, res, next) => {
+      // 📊 현재 요청 정보 로깅
+      const proto = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.headers['x-forwarded-host'] || req.get('host');
+      const currentURL = `${proto}://${host}`;
+      
+      console.log(`🔗 Google OAuth 시작`);
+      console.log(`📍 현재 도메인: ${currentURL}`);
+      console.log(`📍 Headers - Proto: ${req.headers['x-forwarded-proto']}, Host: ${req.headers['x-forwarded-host']}`);
+      console.log(`📍 Request - Protocol: ${req.protocol}, Host: ${req.get('host')}`);
+      console.log(`🎯 설정된 콜백 URL: ${process.env.GOOGLE_CALLBACK_URL || 'https://fluent-drama-japanese.replit.app/api/google/callback'}`);
+      
+      passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+    });
 
     app.get("/api/google/callback",
       passport.authenticate("google", { failureRedirect: "/" }),
       (req, res) => {
-        // Successful authentication, redirect home
+        console.log("✅ Google OAuth 콜백 성공 - 홈으로 리다이렉트");
         res.redirect("/");
       }
     );

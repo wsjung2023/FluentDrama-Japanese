@@ -50,15 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apply JSON response middleware to all API routes
   app.use('/api', ensureJsonResponse);
 
-  // Google OAuth routes
-  app.get("/api/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-
-  app.get("/api/google/callback", 
-    passport.authenticate("google", { failureRedirect: "/auth" }),
-    (req, res) => {
-      res.redirect("/"); // Redirect to home after successful login
-    }
-  );
+  // Google OAuth routes handled in auth.ts - removed duplication
 
   // Authentication endpoints
   app.post("/api/register", async (req, res, next) => {
