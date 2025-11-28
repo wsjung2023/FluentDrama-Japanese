@@ -353,13 +353,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // AI Learning API Endpoints
   app.post('/api/generate-image', async (req: any, res) => {
+    console.log('[Image API] Request received:', { 
+      authenticated: req.isAuthenticated?.(),
+      body: { name: req.body?.name, gender: req.body?.gender, style: req.body?.style }
+    });
+    
     if (!req.isAuthenticated()) {
+      console.log('[Image API] Unauthorized request');
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     try {
       const { name, gender, style, audience, scenario, customScenarioText, backgroundPrompt } = req.body;
       const userId = req.user.id;
+      console.log('[Image API] Starting image generation for user:', userId);
 
       // Check image generation limits specifically
       const imageUsageCheck = await checkImageUsageLimit(userId);
