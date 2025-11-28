@@ -119,8 +119,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Payment routes for Korean providers
-  // Usage limit checking endpoint
-  app.post('/api/check-usage', async (req: any, res) => {
+  // Usage limit checking endpoint (supports both GET and POST)
+  const checkUsageHandler = async (req: any, res: any) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -172,7 +172,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Usage check error:", error);
       res.status(500).json({ message: "Failed to check usage" });
     }
-  });
+  };
+  
+  // Register both GET and POST for check-usage
+  app.get('/api/check-usage', checkUsageHandler);
+  app.post('/api/check-usage', checkUsageHandler);
   
   // Increment usage counter
   app.post('/api/increment-usage', async (req: any, res) => {
