@@ -1,9 +1,12 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { isAuthenticated, isAdmin, setupAuth, hashPassword } from "./auth";
 import passport from "passport";
 import { recognizeSpeech } from "./services/speech-recognition";
+import billingRouter from "./routes/billing";
+import { billingService } from "./services/billingService";
 
 // Middleware to ensure API responses are always JSON
 function ensureJsonResponse(req: any, res: any, next: any) {
@@ -46,6 +49,12 @@ function getPaddlePriceId(tier: string): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   setupAuth(app);
+  
+  // Stripe Webhook is registered in index.ts BEFORE express.json()
+  // to properly receive raw body for signature verification
+  
+  // Billing API routes
+  app.use('/api/billing', billingRouter);
   
   // Apply JSON response middleware to all API routes
   app.use('/api', ensureJsonResponse);

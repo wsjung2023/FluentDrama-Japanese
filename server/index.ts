@@ -1,8 +1,55 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { runMigrations } from 'stripe-replit-sync';
+import { getStripeSync, isStripeConfigured } from './services/stripeClient';
 
 const app = express();
+
+async function initStripe() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.log('[Stripe] DATABASE_URL not set, skipping Stripe initialization');
+    return;
+  }
+
+  try {
+    const configured = await isStripeConfigured();
+    if (!configured) {
+      console.log('[Stripe] Stripe not configured, skipping initialization');
+      return;
+    }
+
+    console.log('[Stripe] Initializing schema...');
+    await runMigrations({ databaseUrl });
+    console.log('[Stripe] Schema ready');
+
+    const stripeSync = await getStripeSync();
+
+    const replitDomains = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN;
+    if (replitDomains) {
+      console.log('[Stripe] Setting up managed webhook...');
+      const webhookBaseUrl = `https://${replitDomains.split(',')[0]}`;
+      try {
+        const { webhook } = await stripeSync.findOrCreateManagedWebhook(
+          `${webhookBaseUrl}/api/stripe/webhook`
+        );
+        console.log(`[Stripe] Webhook configured: ${webhook.url}`);
+      } catch (webhookError) {
+        console.log('[Stripe] Webhook setup skipped (will retry on next deploy):', webhookError);
+      }
+    } else {
+      console.log('[Stripe] No domain found, skipping webhook setup');
+    }
+
+    console.log('[Stripe] Syncing data in background...');
+    stripeSync.syncBackfill()
+      .then(() => console.log('[Stripe] Data sync complete'))
+      .catch((err: any) => console.error('[Stripe] Sync error:', err));
+  } catch (error) {
+    console.error('[Stripe] Init failed:', error);
+  }
+}
 
 // Add CORS and security headers
 app.use((req, res, next) => {
@@ -23,6 +70,28 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   next();
 });
+
+// Stripe Webhook - MUST be registered BEFORE express.json() 
+// to receive raw body for signature verification
+import { WebhookHandlers } from './services/webhookHandlers';
+app.post('/api/stripe/webhook', 
+  express.raw({ type: 'application/json' }), 
+  async (req: any, res) => {
+    const signature = req.headers['stripe-signature'];
+    if (!signature) {
+      return res.status(400).json({ error: 'Missing stripe-signature' });
+    }
+
+    try {
+      const sig = Array.isArray(signature) ? signature[0] : signature;
+      await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error('[Stripe Webhook] Error:', error.message);
+      res.status(400).json({ error: 'Webhook processing error' });
+    }
+  }
+);
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false }));
@@ -58,6 +127,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize Stripe before routes
+  await initStripe();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {

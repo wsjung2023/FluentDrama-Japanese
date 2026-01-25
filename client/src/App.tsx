@@ -23,6 +23,9 @@ import Scenario from "@/pages/scenario";
 import Playground from "@/pages/playground";
 import NotFound from "@/pages/not-found";
 import AudienceSelection from "@/pages/AudienceSelection";
+import Refund from "@/pages/Refund";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -34,6 +37,17 @@ function Router() {
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading"/>
       </div>
     );
+  }
+
+  // Policy pages (always accessible)
+  if (currentPage === 'refund') {
+    return <Refund />;
+  }
+  if (currentPage === 'terms') {
+    return <Terms />;
+  }
+  if (currentPage === 'privacy') {
+    return <Privacy />;
   }
 
   // Show landing page or auth page if not authenticated

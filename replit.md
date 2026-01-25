@@ -2,7 +2,17 @@
 
 This is an AI English Tutor application that provides personalized, interactive English conversation practice. The platform allows users to create custom AI tutors with generated character images and practice conversations through different learning scenarios. It's designed as a progressive learning experience with three target audiences: middle/high school students, college/general learners, and business professionals.
 
-## Recent Updates (August 2025)
+## Recent Updates (January 2026)
+- ✅ **Stripe Payment Integration**: Full subscription billing via Replit Stripe connector with stripe-replit-sync
+- ✅ **4-Tier Pricing**: Free (₩0), Starter (₩4,900), Pro (₩9,900), Premium (₩19,900) monthly plans
+- ✅ **Subscription Management**: Checkout, cancellation, customer portal, and refund request flows
+- ✅ **Cancellation vs Refund Separation**: Cancellation only sets canceledAt (keeps plan until period end), refund requires admin approval
+- ✅ **7-Day Withdrawal Period**: Full refund within 7 days, prorated refund after
+- ✅ **Auto-Upgrade Refund**: When upgrading paid→paid plan, automatically refunds prorated amount from previous plan
+- ✅ **Policy Pages**: Terms of Service, Privacy Policy, Refund Policy pages for PG compliance
+- ✅ **Webhook Security**: Stripe webhook registered before express.json() for proper signature verification
+
+## Previous Updates (August 2025)
 - ✅ **Complete Voice Chat Redesign**: Rebuilt playground as natural conversation app with WhatsApp-style chat interface
 - ✅ **Character First Greeting**: Tutor automatically introduces themselves and starts conversation on page load
 - ✅ **Real-time Voice Chat**: Seamless speech recognition → character response → TTS audio playbook flow
