@@ -29,7 +29,22 @@ import Privacy from "@/pages/Privacy";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { currentPage } = useAppStore();
+  const { currentPage, setCurrentPage } = useAppStore();
+
+  useEffect(() => {
+    const path = window.location.pathname;
+    const pageMap: Record<string, typeof currentPage> = {
+      '/terms': 'terms',
+      '/privacy': 'privacy',
+      '/refund': 'refund',
+      '/subscription': 'subscription',
+      '/pricing': 'subscription',
+    };
+    
+    if (pageMap[path] && currentPage !== pageMap[path]) {
+      setCurrentPage(pageMap[path]);
+    }
+  }, []);
 
   if (isLoading) {
     return (
