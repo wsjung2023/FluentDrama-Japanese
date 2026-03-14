@@ -320,46 +320,6 @@ export const userUsage = pgTable("user_usage", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ============================================
-// CONVERSATION SESSIONS (For "Continue" Feature)
-// ============================================
-
-// Conversation sessions - persistent chat history
-export const conversationSessions = pgTable("conversation_sessions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull(),
-  title: varchar("title").default("新しい会話"),
-  targetLevel: varchar("target_level").default("beginner"),
-  characterId: varchar("character_id"),
-  characterData: jsonb("character_data").$type<{
-    name: string;
-    gender: string;
-    style: string;
-    imageUrl?: string;
-  }>(),
-  scenarioType: varchar("scenario_type"),
-  scenarioContent: text("scenario_content"),
-  status: varchar("status").default("active"),
-  turnCount: integer("turn_count").default(0),
-  summaryText: text("summary_text"),
-  lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-// Conversation messages - individual messages in a session
-export const conversationMessages = pgTable("conversation_messages", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sessionId: varchar("session_id").notNull(),
-  role: varchar("role").notNull(),
-  content: text("content").notNull(),
-  contentLang: varchar("content_lang").default("ja"),
-  translationKo: text("translation_ko"),
-  feedbackKo: text("feedback_ko"),
-  audioUrl: text("audio_url"),
-  modelUsed: varchar("model_used"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
 
 // ============================================
 // INSERT SCHEMAS & TYPES
@@ -387,12 +347,6 @@ export const insertRefundRequestSchema = createInsertSchema(refundRequests).omit
 });
 
 export const insertUserUsageSchema = createInsertSchema(userUsage).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertConversationSessionSchema = createInsertSchema(conversationSessions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -434,7 +388,5 @@ export type RefundRequest = typeof refundRequests.$inferSelect;
 export type InsertRefundRequest = z.infer<typeof insertRefundRequestSchema>;
 export type UserUsage = typeof userUsage.$inferSelect;
 export type InsertUserUsage = z.infer<typeof insertUserUsageSchema>;
-export type ConversationSession = typeof conversationSessions.$inferSelect;
-export type InsertConversationSession = z.infer<typeof insertConversationSessionSchema>;
 export type ConversationMessage = typeof conversationMessages.$inferSelect;
 export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
