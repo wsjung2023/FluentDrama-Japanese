@@ -17,7 +17,7 @@ const QUICK_CHIPS: Array<{ label: string; scenarioId: ScenarioId; audience: Audi
 export default function Home() {
   const { user } = useAuth();
   const { setCurrentPage, setAudience, setScenario } = useAppStore();
-  const tier = ((user as any)?.subscriptionTier || 'free') as string;
+  const tier = user?.subscriptionTier || 'free';
 
   const todayScene = SCENARIO_CONFIGS[DAILY_SCENES[new Date().getDay()]];
 
@@ -32,7 +32,7 @@ export default function Home() {
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-ivory">안녕하세요, {(user as any)?.firstName || '사용자'}님</h1>
+            <h1 className="text-3xl font-bold text-ivory">안녕하세요, {user?.firstName || '사용자'}님</h1>
             <p className="text-sm text-ivory-muted">오늘 어떤 일본어 장면을 연습해볼까요?</p>
           </div>
           <div className="flex items-center gap-3">
