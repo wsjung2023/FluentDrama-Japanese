@@ -158,8 +158,8 @@ export default function Character() {
           style: character.style,
           audience: audience,
           scenario: scenario?.presetKey || 'restaurant',
-          customScenarioText: scenario?.freeText || null,
-          backgroundPrompt: backgroundPrompt // 새로운 배경 프롬프트 추가
+          customScenarioText: scenario?.freeText || undefined,
+          backgroundPrompt: backgroundPrompt || undefined
         }
       );
 
