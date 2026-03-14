@@ -16,7 +16,7 @@ export default function Subscription() {
   const { setCurrentPage } = useAppStore();
   const [selectedProvider, setSelectedProvider] = useState<'paddle'>('paddle');
 
-  const subscribeMutation = useMutation({
+  const subscribeMutation = useMutation<{ redirectUrl?: string }, Error, { tier: string; provider: string }>({
     mutationFn: async ({ tier, provider }: { tier: string; provider: string }) => {
       const response = await apiRequest("POST", "/api/subscribe", { tier, provider });
       return response.json();
@@ -129,7 +129,7 @@ export default function Subscription() {
         </div>
 
         {/* Current Subscription */}
-        {user && (
+        {!!user && (
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>현재 구독 상태</CardTitle>
