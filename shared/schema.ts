@@ -63,6 +63,83 @@ export const learningSessions = pgTable("learning_sessions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+
+// Conversation sessions table (Plan 02 Sprint 2: persistent session storage)
+export const conversationSessions = pgTable("conversation_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  scenarioId: varchar("scenario_id").notNull(),
+  difficulty: varchar("difficulty").notNull(),
+  characterId: varchar("character_id").notNull(),
+  userGoal: text("user_goal").notNull(),
+  history: jsonb("history").$type<Array<{
+    speaker: 'user' | 'assistant' | 'character';
+    text: string;
+    timestamp: number;
+  }>>().default([]),
+  lastFeedback: jsonb("last_feedback").$type<{
+    accuracy: number;
+    suggestions: string[];
+    pronunciation: string;
+  }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+
+// Conversation messages table (Plan 02 Sprint 2: turn-level persistence)
+export const conversationMessages = pgTable("conversation_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").references(() => conversationSessions.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  speaker: varchar("speaker").notNull(), // user | assistant | character
+  text: text("text").notNull(),
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+
+
+// Prompt templates table (Plan 02 Sprint 2: prompt governance + DB masterization)
+export const promptTemplates = pgTable("prompt_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateKey: varchar("template_key").notNull(),
+  scenarioId: varchar("scenario_id"),
+  difficulty: varchar("difficulty"),
+  content: text("content").notNull(),
+  version: varchar("version").default("v1"),
+  description: text("description"),
+  updatedBy: varchar("updated_by"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+
+
+// Master config table (Plan 02 Sprint 2: runtime master flags / policy SSOT)
+export const masterConfigs = pgTable("master_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  configKey: varchar("config_key").notNull().unique(),
+  configValue: jsonb("config_value").$type<Record<string, unknown>>().notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Code standards table (Plan 02 Sprint 2: coding rules / guardrails SSOT)
+export const codeStandards = pgTable("code_standards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  standardKey: varchar("standard_key").notNull(),
+  category: varchar("category").notNull(), // e.g. backend|frontend|docs|ops
+  title: varchar("title").notNull(),
+  body: text("body").notNull(),
+  severity: varchar("severity").default("recommended"), // required|recommended|advisory
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Saved characters table for character reuse
 export const savedCharacters = pgTable("saved_characters", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -90,6 +167,12 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const insertSessionSchema = createInsertSchema(learningSessions).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertConversationSessionSchema = createInsertSchema(conversationSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertSavedCharacterSchema = createInsertSchema(savedCharacters).omit({
@@ -143,11 +226,40 @@ export const ttsRequestSchema = z.object({
 
 export const speechRecognitionRequestSchema = z.object({
   audioBlob: z.string(), // base64 encoded audio
-  language: z.enum(['en', 'ko']).default('en'),
+  language: z.enum(['en', 'ko', 'ja']).default('en'),
+});
+
+
+export const conversationDifficultySchema = z.enum(['beginner', 'intermediate', 'advanced']);
+
+export const conversationStartRequestSchema = z.object({
+  scenarioId: z.string().trim().min(1),
+  difficulty: conversationDifficultySchema,
+  characterId: z.string().trim().min(1),
+  userGoal: z.string().trim().min(1),
+});
+
+export const conversationHistoryItemSchema = z.object({
+  speaker: z.enum(['user', 'assistant', 'character']),
+  text: z.string().trim().min(1),
+});
+
+export const conversationTurnRequestSchema = z.object({
+  sessionId: z.string().trim().min(1),
+  userInput: z.string().trim().min(1),
+  history: z.array(conversationHistoryItemSchema).default([]),
+  audioMeta: z.object({
+    sttConfidence: z.number().min(0).max(1).optional(),
+    durationMs: z.number().int().positive().optional(),
+  }).optional(),
+});
+
+export const conversationResumeRequestSchema = z.object({
+  sessionId: z.string().trim().min(1),
 });
 
 export const conversationTurnSchema = z.object({
-  speaker: z.enum(['user', 'character']),
+  speaker: z.enum(['user', 'assistant', 'character']),
   text: z.string(),
   audioUrl: z.string().optional(),
   timestamp: z.number(),
@@ -161,13 +273,19 @@ export const conversationTurnSchema = z.object({
 export const conversationStateSchema = z.object({
   turns: z.array(conversationTurnSchema),
   currentTopic: z.string(),
-  level: z.enum(['beginner', 'intermediate', 'advanced']),
+  level: conversationDifficultySchema,
   isListening: z.boolean(),
   isWaitingForResponse: z.boolean(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertSession = z.infer<typeof insertSessionSchema>;
+export type InsertConversationSession = z.infer<typeof insertConversationSessionSchema>;
+export type ConversationSessionRecord = typeof conversationSessions.$inferSelect;
+export type ConversationMessageRecord = typeof conversationMessages.$inferSelect;
+export type PromptTemplateRecord = typeof promptTemplates.$inferSelect;
+export type MasterConfigRecord = typeof masterConfigs.$inferSelect;
+export type CodeStandardRecord = typeof codeStandards.$inferSelect;
 export type InsertSavedCharacter = z.infer<typeof insertSavedCharacterSchema>;
 export type LearningSession = typeof learningSessions.$inferSelect;
 export type SavedCharacter = typeof savedCharacters.$inferSelect;
@@ -177,5 +295,8 @@ export type GenerateImageRequest = z.infer<typeof generateImageRequestSchema>;
 export type GenerateDialogueRequest = z.infer<typeof generateDialogueRequestSchema>;
 export type TTSRequest = z.infer<typeof ttsRequestSchema>;
 export type SpeechRecognitionRequest = z.infer<typeof speechRecognitionRequestSchema>;
+export type ConversationStartRequest = z.infer<typeof conversationStartRequestSchema>;
+export type ConversationTurnRequest = z.infer<typeof conversationTurnRequestSchema>;
+export type ConversationResumeRequest = z.infer<typeof conversationResumeRequestSchema>;
 export type ConversationTurn = z.infer<typeof conversationTurnSchema>;
 export type ConversationState = z.infer<typeof conversationStateSchema>;

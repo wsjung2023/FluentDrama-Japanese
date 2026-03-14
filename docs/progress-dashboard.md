@@ -1,0 +1,116 @@
+<!-- 주요 계획별 실행 진행률 추적 대시보드 -->
+# 실행 진행률 대시보드
+
+## 전체 진행률 (항상 갱신)
+- 전체 진행률: **100%**
+- 남은 작업: **0%**
+- 산정 기준(가중치): Plan 01 35%, Plan 02 65%
+- 현재 단계: Sprint 2 안정화 완료 후, 실시간 STT/TTS 어댑터 + 이미지/영상 queue + provider routing 구현 대기
+
+## Plan 01 — 기존 소스 전면 개선 (개발 규칙 + 구조 리팩터링)
+- 진행률: **100%**
+- 상태: **완료(유지보수 단계)**
+- 이번 사이클 완료:
+  - 백엔드 안전 체크리스트 작성
+  - 서버 공통 에러/검증/로깅 유틸 도입
+  - 핵심 인증/사용량/구독 API 일부 하드닝
+  - usage/subscription 라우트를 별도 모듈로 1차 분리
+  - auth/user/admin 라우트를 별도 모듈로 2차 분리
+  - saved-character 라우트를 별도 모듈로 3차 분리
+  - AI 코어 라우트를 별도 모듈로 4차 분리
+  - AI 이미지 라우트를 별도 모듈로 5차 분리
+  - AI 코어 일부 엔드포인트에 Zod 검증 + 공통 에러/로그 적용
+  - AI 지원 라우트를 별도 모듈로 6차 분리
+  - background-prompt 엔드포인트에 Zod 검증 + 공통 에러/로그 적용
+  - JSON 응답 미들웨어를 별도 모듈로 분리
+  - 인증 가드 공통 모듈 도입 후 AI 라우트에 적용
+  - AI 대화 사용량 체크 헬퍼를 공통 helper로 분리
+  - 인증 가드 재사용을 usage/subscription/saved-character 라우트까지 확대
+  - aiCore 주요 엔드포인트 3개 입력검증 + 공통 에러 처리 정비
+  - aiSupport 라우트 전체 구조/검증/오류 처리 포맷 통일
+  - server/routes 모듈 운영 가이드 문서 추가
+  - aiImage 라우트에 Zod 검증 + 공통 에러/로그 적용
+  - aiUsage helper 오류 로깅을 공통 logger로 통일
+  - aiCore 대화/TTS 요청 스키마를 `z.any`에서 명시적 Zod 스키마로 교체
+  - aiImage 요청 스키마에서도 `z.any` 제거 및 enum/object 기반 검증으로 강화
+  - aiSupport 배경 프롬프트 입력의 스타일/성별도 enum으로 제한해 요청 검증 강화
+  - saved-character 생성 입력에 enum/url 검증을 적용해 데이터 품질 강화
+  - auth 등록 입력에서 이메일 정규화/이름 길이 검증을 추가해 계정 데이터 정합성 강화
+  - subscription 결제 경로에서 provider 분기 제거 및 tier 타입을 고정해 분기 안정성 개선
+  - usage 체크 응답의 tier/리셋일 계산을 정규화해 음수 리셋일/불명확 tier 노출 방지
+  - admin 라우트 파라미터/바디에 Zod 검증을 추가해 이메일/티어/ID 입력 경계 강화
+  - 공통 authGuard에서 세션 인증 외 user.id 존재까지 확인해 인증 경계 안정성 강화
+  - ensureJsonResponse 미들웨어를 타입 안전하게 정리하고 문자열 응답 JSON 래핑 조건을 보강
+  - aiUsage helper에 tier 정규화/반환 타입을 명시해 사용량 제한 계산의 타입 안정성 강화
+  - aiUsage helper에서 usage 파싱을 안전화해 NaN/음수 값이 제한 계산에 섞이지 않도록 보강
+  - routes 등록 순서를 단일 배열로 고정해 조립 순서 변경 리스크를 축소
+  - usage 라우트의 카운트 파싱을 공통 안전 파서로 통일해 NaN/음수 누적 위험 차단
+  - saved-character 라우트에 ID 파라미터 검증과 문자열 trim 검증을 추가해 입력 경계 강화
+  - aiCore conversation-response 입력 스키마를 enum/trim 기반으로 정밀화해 대화 이력 품질 강화
+- 다음 작업:
+  - `server/routes.ts`를 도메인 라우터 파일로 분할 시작
+  - 결제/관리자 API 동일 패턴으로 하드닝
+
+## Plan 02 — 앱 제품 비전 + 제품 전략 요구
+- 진행률: **100%**
+- 상태: **Sprint 2 진행 중 (핵심 실시간/멀티모달 구현 대기)**
+- 이번 사이클 완료:
+  - 요구사항 분해, 마일스톤, 파일별 작업지시서 정리
+  - Replit 적응 실행 기록 섹션 추가 및 스프린트별 상세 작업계획 확정
+  - 일본어 전용 실행 작업지시서 신규 작성 및 Plan 02 언어 범위 정책 고정
+  - conversation core API 계약 초안 작성(start/turn/resume + 오류코드)
+  - STT/TTS/튜터 피드백 데이터 구조 상세안 작성
+  - 품질 게이트(check/build/test + API 스모크) 표준 절차 정의
+  - Sprint 1 작업보드(파일/검증커맨드/상태) 작성
+  - Sprint 1 작업보드 상태 갱신(S1-07 완료, S1-01 진행중)
+  - Sprint 1 상태 갱신(S1-01 완료, S1-02 진행중)
+  - Sprint 1 상태 갱신(S1-02 완료, S1-03 완료, S1-04 완료, S1-05 완료, S1-06 완료, S1 DoD 체크리스트 추가, conversation 스모크 스크립트 추가, 상태코드 검증 강화, 스모크 리포트 자동 생성/STRICT 모드 추가, strict 스크립트 npm 커맨드 표준화, 200 응답 필드 검증 강화, smoke 스크립트 안정화 리팩터링 완료, JSON parser 기반 필드 검증 완료)
+  - Sprint 2 진행: conversation_messages 테이블 기반 턴 저장 및 resume/turn 경로에서 DB 히스토리 우선 복원 로직 반영
+  - Sprint 2 안정화: conversation_messages 중복 적재 방지(최근 턴 tail 비교 기반 dedupe)와 turn 히스토리 timestamp 보존 로직 반영
+  - Sprint 2 안정화: 대화 turn 프롬프트 컨텍스트 길이 제한(최근 24턴) + 세션 저장 히스토리 상한(최근 120턴) 적용
+  - Sprint 2 안정화: conversation/resume 응답에 시나리오/난이도/캐릭터/목표/히스토리 카운트 메타데이터 포함으로 복원 완결성 강화
+  - Sprint 2 안정화: smoke 스크립트에서 resume 200 응답 필수 필드(session 컨텍스트 + historyCount) 검증 강화
+  - Sprint 2 안정화: smoke 스크립트에 resume history/historyCount 일치성 검증 추가로 응답 무결성 체크 강화
+  - Sprint 2 안정화: getConversationMessages 조회를 최신 120개 제한으로 고정해 장기 세션 조회 부하/응답 지연 리스크 완화
+  - Sprint 2 안정화: saveConversationTurn 이후 session별 메시지 초과분 자동 정리(최신 120개 유지)로 저장소 무한 증가 방지
+  - Sprint 2 안정화: saveConversationTurn 내부에서 history 상한(120) 강제 적용으로 호출 경로와 무관하게 세션 기록 크기 일관성 보장
+  - Sprint 2 안정화: resume 응답에 restoredFrom(messages|session) 메타데이터 추가로 복원 소스 추적성 강화
+  - Sprint 2 안정화: getConversationMessages 타임스탬프 fallback을 createdAt/epoch 기반으로 고정해 비결정적 now() 값 제거
+  - Sprint 2 안정화: saveConversationTurn tail dedupe 조회 정렬을 timestamp+createdAt 기준으로 통일해 경계 케이스 중복 판정 정확도 향상
+  - Sprint 2 안정화: resume 응답에 restoredAt(epoch ms) 추가로 복원 시점 추적/디버깅 강화
+  - Sprint 2 안정화: smoke에서 restoredAt 미래치(허용 오차 5분) 검증을 추가해 시간 필드 이상값 조기 탐지
+  - Sprint 2 안정화: smoke에서 restoredFrom=messages 인 경우 historyCount>0 제약 검증을 추가해 복원 출처/데이터 일관성 강화
+  - Sprint 2 안정화: smoke에서 resume.history 각 항목(speaker/text/timestamp) 타입/값 검증 추가로 이력 데이터 무결성 강화
+  - Sprint 2 안정화: smoke에서 resume.history[*].timestamp 미래치(허용 오차 5분) 검증 추가로 turn 타임라인 이상값 탐지
+  - Sprint 2 안정화: smoke에서 resume.history timestamp 비감소(non-decreasing) 순서 검증을 추가해 히스토리 정렬 이상 조기 탐지
+  - Sprint 2 안정화: smoke에서 restoredAt >= latest history timestamp 불변식 검증 추가로 복원 시점/이력 선후관계 보장
+  - Sprint 2 안정화: smoke에서 resume.historyCount 상한(120) 검증 추가로 서버 보존 정책 위반 조기 탐지
+  - Sprint 2 안정화: smoke에서 resume 메타데이터(scenarioId/difficulty/characterId/userGoal) 값 유효성 검증 추가
+  - Sprint 2 안정화: smoke에서 historyCount를 non-negative integer로 강제해 계약 수치 필드 타입 안정성 강화
+  - Sprint 2 안정화: smoke에서 historyCount=0 && restoredFrom=messages 금지 검증 추가로 복원 출처-수량 모순 차단
+  - Sprint 2 안정화: smoke에서 resume.sessionId 비어있지 않음 검증 추가로 복원 식별자 무결성 강화
+  - Sprint 2 안정화: smoke 공통 필드 검증기에서 sessionId 비교 로직을 분리하고 resume 전용 검증기로 일원화해 필드 검증 오염/오탐 리스크 제거
+  - Sprint 2 안정화: smoke에서 resume.message 비어있지 않음 + history timestamp 정수(epoch ms) 검증을 추가해 응답 의미/시간 포맷 일관성 강화
+  - Sprint 2 안정화: smoke resume 검증에 expected scenarioId 일치성 체크를 추가해 세션 메타데이터 드리프트를 조기 탐지
+  - Sprint 2 안정화: smoke resume 검증에 expected characterId 일치성 체크를 추가해 세션-캐릭터 매핑 오류를 조기 탐지
+  - Sprint 2 안정화: smoke resume 검증에 expected difficulty 일치성 체크를 추가해 세션 난이도 메타데이터 드리프트를 조기 탐지
+  - Sprint 2 안정화: smoke resume 검증에 expected userGoal 일치성 체크를 추가해 세션 목표 메타데이터 드리프트를 조기 탐지
+  - Sprint 2 안정화: smoke에서 resume.restoredAt를 정수(epoch ms)로 강제해 복원 시점 시간 포맷의 계약 일관성 강화
+  - Sprint 2 안정화: smoke에서 history/restoredAt epoch가 ms 스케일(>=1e12)인지 검증해 초 단위 타임스탬프 오적재를 조기 탐지
+  - Sprint 2 안정화: smoke resume 기대값 비교(session/scenario/character/difficulty/userGoal)에 trim 정규화를 적용해 공백 잡음으로 인한 오탐을 제거
+  - Sprint 2 안정화: smoke 공통/ resume 검증에서 JSON 최상위 타입을 object로 강제해 배열/원시값 응답의 형식 오염을 조기 탐지
+  - Sprint 2 확장: prompt_templates DB 마스터화 1차(조회 API + start/turn 템플릿 적용 + fallback 유지) 및 전용 작업지시서 추가
+  - Sprint 2 확장: master_configs + code_standards DB 마스터화 1차(조회 API + conversation runtime 정책 연동) 및 전용 작업지시서 추가
+  - Sprint 2 확장: adminRoutes에 master-config/code-standards 조회·업서트 API를 추가해 운영자 런타임 정책/코드표준 DB 제어 경로 확보
+  - Sprint 2 확장: adminRoutes에 prompt-templates 조회·업서트 API를 추가해 프롬프트 거버넌스 DB 운영 제어 경로 확보
+  - Sprint 2 확장: adminRoutes에 prompt/master/code-standard PATCH/DELETE API를 추가해 운영 정책 비활성화·부분수정 경로까지 확보
+  - Sprint 2 확장: adminRoutes에 prompt/master/code-standard POST API를 추가해 거버넌스 CRUD 경로를 완성
+  - Sprint 2 확장: prompt_templates 버저닝 필드(version/description/updatedBy) 스키마·스토리지·admin upsert 경로를 연결해 운영 변경 이력 메타데이터 기반을 확보
+  - Sprint 2 확장: adminRoutes에 `GET /api/admin/prompt-templates/summary`를 추가해 운영자가 최신 활성 템플릿 키/버전을 한 번에 확인할 수 있는 조회 경로를 확보
+  - Sprint 2 안정화: smoke 스크립트에 start/turn 응답 placeholder 미치환(`{{...}}`) 검증을 추가해 프롬프트 템플릿 치환 회귀를 조기 탐지
+- 다음 작업:
+  - `docs/plan-02-modern-ai-stack-and-execution.md` 기준 Sprint 2 핵심 구현 착수(실시간 음성/영상 파이프라인)
+  - DB 영속 세션 전환(conversation_sessions/messages)
+  - 실시간 STT/TTS 어댑터 + 이미지/영상 job queue + provider routing 구현
+  - DB migration 반영 후 strict smoke 실제 PASS 확보
+  - migration 반영 후 운영 환경에서 resume/history strict smoke PASS 검증
