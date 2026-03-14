@@ -57,6 +57,16 @@ export function registerAuthUserRoutes(app: Express) {
     res.status(200).json(sanitizeUser(req.user as Record<string, any>));
   });
 
+  app.get("/api/logout", (req, res) => {
+    (req.session as any).userId = null;
+    req.logout((err: any) => {
+      if (err) {
+        logError("Logout error", err);
+      }
+      res.redirect("/");
+    });
+  });
+
   app.post("/api/logout", (req, res) => {
     (req.session as any).userId = null;
     req.logout((err: any) => {
