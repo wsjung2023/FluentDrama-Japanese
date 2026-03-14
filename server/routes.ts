@@ -26,7 +26,6 @@ const routeRegistrars: RouteRegistrar[] = [
 ];
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
   setupAuth(app);
 
   // Apply JSON response middleware to all API routes

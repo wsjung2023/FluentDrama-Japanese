@@ -312,12 +312,17 @@ export class DatabaseStorage implements IStorage {
 
     const updates: Partial<User> = { updatedAt: new Date() };
     
+    // Always increment dailyUsageCount for all usage types
+    const currentDailyUsage = parseInt(user.dailyUsageCount || '0');
+    updates.dailyUsageCount = String(currentDailyUsage + 1);
+    
     switch (type) {
       case 'conversation':
         updates.conversationCount = String(parseInt(user.conversationCount || '0') + 1);
         break;
       case 'imageGeneration':
         updates.imageGenerationCount = String(parseInt(user.imageGenerationCount || '0') + 1);
+        updates.monthlyImageCount = String(parseInt(user.monthlyImageCount || '0') + 1);
         break;
       case 'tts':
         updates.ttsUsageCount = String(parseInt(user.ttsUsageCount || '0') + 1);

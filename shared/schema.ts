@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, jsonb, timestamp, boolean, integer, date, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -24,10 +24,13 @@ export const users = pgTable("users", {
   // Subscription fields
   subscriptionTier: varchar("subscription_tier").default("free"), // free, starter, pro, premium
   subscriptionStatus: varchar("subscription_status").default("active"), // active, canceled, expired
-  paymentProvider: varchar("payment_provider"), // portone, toss, paddle
+  paymentProvider: varchar("payment_provider"), // portone, toss, paddle, stripe
   customerId: varchar("customer_id"),
   subscriptionId: varchar("subscription_id"),
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
+  // Stripe specific fields
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
   // Usage tracking
   conversationCount: varchar("conversation_count").default("0"), // Monthly conversation usage
   imageGenerationCount: varchar("image_generation_count").default("0"), // Track image generation
@@ -278,6 +281,124 @@ export const conversationStateSchema = z.object({
   isWaitingForResponse: z.boolean(),
 });
 
+// ============================================
+// BILLING & SUBSCRIPTION TABLES (Stripe Integration)
+// ============================================
+
+// Billing plans - stored in DB for dynamic management
+export const billingPlans = pgTable("billing_plans", {
+  id: varchar("id").primaryKey(),
+  app: varchar("app").notNull().default("fluentdrama"),
+  name: varchar("name").notNull(),
+  priceMonthlyKrw: integer("price_monthly_krw").notNull().default(0),
+  priceMonthlyUsd: varchar("price_monthly_usd"),
+  stripePriceId: varchar("stripe_price_id"),
+  stripeProductId: varchar("stripe_product_id"),
+  features: jsonb("features").$type<{
+    conversation_limit_month: number;
+    image_limit_month: number;
+    tts_limit_month: number;
+    model_tier: "basic" | "premium";
+  }>().notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// User subscriptions - tracks active subscriptions
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  app: varchar("app").notNull().default("fluentdrama"),
+  planId: varchar("plan_id").notNull(),
+  status: varchar("status").notNull().default("active"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  paymentMethod: varchar("payment_method"),
+  currentPeriodStart: timestamp("current_period_start", { withTimezone: true }),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  canceledAt: timestamp("canceled_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Payment transactions - tracks all payments
+export const paymentTransactions = pgTable("payment_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subscriptionId: varchar("subscription_id").notNull(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  stripeInvoiceId: varchar("stripe_invoice_id"),
+  amount: integer("amount").notNull(),
+  currency: varchar("currency").notNull().default("KRW"),
+  status: varchar("status").notNull(),
+  paymentMethod: varchar("payment_method"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Refund requests - tracks refund requests
+export const refundRequests = pgTable("refund_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subscriptionId: varchar("subscription_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  reason: text("reason").notNull(),
+  refundAmount: integer("refund_amount"),
+  status: varchar("status").notNull().default("pending"),
+  adminNote: text("admin_note"),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// User usage tracking - more granular than users table
+export const userUsage = pgTable("user_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  usageKey: varchar("usage_key").notNull(),
+  periodStart: date("period_start").notNull(),
+  periodEnd: date("period_end").notNull(),
+  usedInPeriod: integer("used_in_period").notNull().default(0),
+  limitInPeriod: integer("limit_in_period").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+
+// ============================================
+// INSERT SCHEMAS & TYPES
+// ============================================
+
+export const insertBillingPlanSchema = createInsertSchema(billingPlans).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPaymentTransactionSchema = createInsertSchema(paymentTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRefundRequestSchema = createInsertSchema(refundRequests).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserUsageSchema = createInsertSchema(userUsage).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertConversationMessageSchema = createInsertSchema(conversationMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertSession = z.infer<typeof insertSessionSchema>;
 export type InsertConversationSession = z.infer<typeof insertConversationSessionSchema>;
@@ -300,3 +421,17 @@ export type ConversationTurnRequest = z.infer<typeof conversationTurnRequestSche
 export type ConversationResumeRequest = z.infer<typeof conversationResumeRequestSchema>;
 export type ConversationTurn = z.infer<typeof conversationTurnSchema>;
 export type ConversationState = z.infer<typeof conversationStateSchema>;
+
+// New billing types
+export type BillingPlan = typeof billingPlans.$inferSelect;
+export type InsertBillingPlan = z.infer<typeof insertBillingPlanSchema>;
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
+export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
+export type InsertPaymentTransaction = z.infer<typeof insertPaymentTransactionSchema>;
+export type RefundRequest = typeof refundRequests.$inferSelect;
+export type InsertRefundRequest = z.infer<typeof insertRefundRequestSchema>;
+export type UserUsage = typeof userUsage.$inferSelect;
+export type InsertUserUsage = z.infer<typeof insertUserUsageSchema>;
+export type ConversationMessage = typeof conversationMessages.$inferSelect;
+export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
