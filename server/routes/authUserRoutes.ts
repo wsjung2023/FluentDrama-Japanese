@@ -8,6 +8,12 @@ import { ApiError, getErrorMessage, getErrorStatus } from "../lib/apiError";
 import { parseOrThrow } from "../lib/validate";
 import { logError } from "../lib/logger";
 
+function sanitizeUser(user: Record<string, any>) {
+  const plain = JSON.parse(JSON.stringify(user));
+  delete plain.password;
+  return plain;
+}
+
 export function registerAuthUserRoutes(app: Express) {
   app.post("/api/register", async (req, res, next) => {
     try {
@@ -37,7 +43,7 @@ export function registerAuthUserRoutes(app: Express) {
 
       req.login(user, (err: any) => {
         if (err) return next(err);
-        res.status(201).json(user);
+        res.status(201).json(sanitizeUser(user));
       });
     } catch (error) {
       logError("Registration error", error);
@@ -48,7 +54,7 @@ export function registerAuthUserRoutes(app: Express) {
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+    res.status(200).json(sanitizeUser(req.user as Record<string, any>));
   });
 
   app.post("/api/logout", (req, res) => {
@@ -73,7 +79,7 @@ export function registerAuthUserRoutes(app: Express) {
         throw new ApiError(404, "User not found");
       }
 
-      res.json(user);
+      res.json(sanitizeUser(user));
     } catch (error) {
       logError("Get user error", error);
       const status = getErrorStatus(error);

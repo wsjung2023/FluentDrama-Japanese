@@ -171,7 +171,8 @@ export function setupAuth(app: Express) {
 
       req.login(user, (err) => {
         if (err) return next(err);
-        res.status(201).json(user);
+        const { password: _, ...safeUser } = JSON.parse(JSON.stringify(user));
+        res.status(201).json(safeUser);
       });
     } catch (error) {
       console.error("Register error:", error);
@@ -192,7 +193,8 @@ export function setupAuth(app: Express) {
         if (err) {
           return res.status(500).json({ message: "Login failed" });
         }
-        res.json(user);
+        const { password: _, ...safeUser } = JSON.parse(JSON.stringify(user));
+        res.json(safeUser);
       });
     })(req, res, next);
   });
@@ -202,7 +204,8 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    res.json(req.user);
+    const { password: _, ...safeUser } = JSON.parse(JSON.stringify(req.user));
+    res.json(safeUser);
   });
 
   // Logout endpoints (both GET and POST for flexibility)
