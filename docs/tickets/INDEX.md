@@ -2,6 +2,7 @@
 
   작성일: 2026-03-14  
   기반: FluentDrama_Japanese_Recovered_Analysis 문서 + 실제 코드 분석
+  상태: docs/tickets 폴더 최신 수정 사항 반영
 
   ---
 
@@ -49,4 +50,32 @@
   | 01 + 02 + 04 + 05 | Task #1 — 코어 버그 수정 |
   | 03 | Task #2 — 대화 엔진 단일화 |
   | 06 + 07 + 08 + 09 | Task #3 — 프리미엄 UX 리디자인 |
+
+  ---
+
+  ## 최근 수정 사항
+
+  - `docs/tickets/` 내 상세 지시서 구조 및 우선순위를 다시 검토하고,
+    현재 티켓 파일 목록(01~09)과 인덱스 매핑이 일치하는지 재확인했습니다.
+  - 향후 티켓이 추가되면 이 문서의 **파일 목록**과 **Project Tasks 매핑**을
+    동일 커밋에서 함께 갱신하는 것을 권장합니다.
   
+
+
+  ## 구현 상태
+
+  - Ticket 01~09 기준 코드 반영 작업을 순차 적용했습니다.
+  - 공통 시나리오 소스, 대화 API 훅 단일화, UI 토큰/레이아웃 개편을 포함합니다.
+
+
+  ## 01~09 구현 재확인 체크 (풀 구현 기준)
+
+  - [x] Ticket 01 — 시나리오 키 단일 소스 및 타입 통합
+  - [x] Ticket 02 — audience 하드코딩 제거
+  - [x] Ticket 03 — 대화 API 훅 단일화
+  - [x] Ticket 04 — 랜덤 점수 제거 (deterministic feedback)
+  - [x] Ticket 05 — 일본어 앱 정체성 문구/스토리지 정리
+  - [x] Ticket 06 — Home Scene-first 레이아웃
+  - [x] Ticket 07 — 시나리오 카드 갤러리 + 메타정보
+  - [x] Ticket 08 — Immersive Studio 3-zone + press-to-record 마이크 액션바
+  - [x] Ticket 09 — 디자인 토큰/버튼 variant/JP 폰트

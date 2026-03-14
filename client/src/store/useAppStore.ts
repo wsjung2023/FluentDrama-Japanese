@@ -1,3 +1,5 @@
+// Global Zustand store for audience, scenario, and conversation UI state.
+import type { ScenarioId } from "@/constants/scenarios";
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -13,7 +15,7 @@ export interface Character {
 }
 
 export interface Scenario {
-  presetKey?: string;
+  presetKey?: ScenarioId;
   freeText?: string;
 }
 
@@ -125,7 +127,7 @@ export const useAppStore = create<AppState>()(
       resetState: () => set(initialState),
     }),
     {
-      name: 'ai-english-tutor-storage-v2',
+      name: 'fluent-drama-japanese-v1',
       partialize: (state) => ({
         audience: state.audience,
         character: state.character,

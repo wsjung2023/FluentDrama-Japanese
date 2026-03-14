@@ -1,5 +1,8 @@
+// Preset scenario and audience theme definitions for scenario selection.
+import type { ScenarioId } from '@/constants/scenarios';
+
 export interface PresetScenario {
-  key: string;
+  key: ScenarioId;
   title: string;
   description: string;
   icon: string;
