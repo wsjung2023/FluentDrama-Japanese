@@ -19,16 +19,12 @@ export default function Scenario() {
 
   const startPreset = (scenarioId: ScenarioId) => {
     const selected = SCENARIO_CONFIGS[scenarioId];
-    try {
-      setSelectedId(scenarioId);
-      setScenario({ presetKey: scenarioId, freeText: '' });
-      if (selected.audience !== 'all') {
-        setAudience(selected.audience);
-      }
-      setCurrentPage('character');
-    } catch {
-      setCurrentPage('scenario');
+    setSelectedId(scenarioId);
+    setScenario({ presetKey: scenarioId, freeText: '' });
+    if (selected.audience !== 'all') {
+      setAudience(selected.audience);
     }
+    setCurrentPage('character');
   };
 
   return (
@@ -77,13 +73,7 @@ export default function Scenario() {
               />
               <div className="flex justify-end">
                 <Button
-                  onClick={() => {
-                    try {
-                      setCurrentPage('character');
-                    } catch {
-                      setCurrentPage('scenario');
-                    }
-                  }}
+                  onClick={() => setCurrentPage('character')}
                 >
                   시작하기 →
                 </Button>

@@ -22,14 +22,9 @@ export default function Home() {
   const todayScene = SCENARIO_CONFIGS[DAILY_SCENES[new Date().getDay()]];
 
   const goScenario = (scenarioId: ScenarioId, audience: Audience) => {
-    try {
-      setAudience(audience);
-      setScenario({ presetKey: scenarioId, freeText: '' });
-      setCurrentPage('character');
-    } catch {
-      setAudience('general');
-      setCurrentPage('scenario');
-    }
+    setAudience(audience);
+    setScenario({ presetKey: scenarioId, freeText: '' });
+    setCurrentPage('character');
   };
 
   return (

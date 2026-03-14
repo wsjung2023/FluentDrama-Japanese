@@ -114,12 +114,8 @@ export default function DramaScene() {
     if (!last) return;
     const utter = new SpeechSynthesisUtterance(last.text);
     utter.lang = 'ja-JP';
-    try {
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utter);
-    } catch {
-      toast({ title: '재생 불가', description: '브라우저 음성 합성을 사용할 수 없습니다.' });
-    }
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
   };
 
   const recorder = usePressToRecord({
@@ -198,41 +194,11 @@ export default function DramaScene() {
           <Button variant="ghost-gold" size="icon" onClick={replayLastAssistant}><RotateCcw /></Button>
           <Button
             variant="scene-action"
-            onMouseDown={() => {
-              try {
-                recorder.startRecording();
-              } catch {
-                // hook handles errors
-              }
-            }}
-            onMouseUp={() => {
-              try {
-                recorder.stopRecording();
-              } catch {
-                // hook handles errors
-              }
-            }}
-            onMouseLeave={() => {
-              try {
-                recorder.stopRecording();
-              } catch {
-                // hook handles errors
-              }
-            }}
-            onTouchStart={() => {
-              try {
-                recorder.startRecording();
-              } catch {
-                // hook handles errors
-              }
-            }}
-            onTouchEnd={() => {
-              try {
-                recorder.stopRecording();
-              } catch {
-                // hook handles errors
-              }
-            }}
+            onMouseDown={() => recorder.startRecording()}
+            onMouseUp={() => recorder.stopRecording()}
+            onMouseLeave={() => recorder.stopRecording()}
+            onTouchStart={() => recorder.startRecording()}
+            onTouchEnd={() => recorder.stopRecording()}
             disabled={recorder.isProcessing}
           >
             <Mic className={recorder.isRecording ? 'text-red-400' : ''} />

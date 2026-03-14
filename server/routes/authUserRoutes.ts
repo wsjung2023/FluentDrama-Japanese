@@ -7,11 +7,11 @@ import { hashPassword, isAuthenticated } from "../auth";
 import { ApiError, getErrorMessage, getErrorStatus } from "../lib/apiError";
 import { parseOrThrow } from "../lib/validate";
 import { logError } from "../lib/logger";
+import type { User } from "@shared/schema";
 
-function sanitizeUser(user: Record<string, any>) {
-  const plain = JSON.parse(JSON.stringify(user));
-  delete plain.password;
-  return plain;
+function sanitizeUser(user: User): Omit<User, 'password'> {
+  const { password, ...safeUser } = JSON.parse(JSON.stringify(user));
+  return safeUser;
 }
 
 export function registerAuthUserRoutes(app: Express) {
@@ -54,7 +54,7 @@ export function registerAuthUserRoutes(app: Express) {
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(sanitizeUser(req.user as Record<string, any>));
+    res.status(200).json(sanitizeUser(req.user as User));
   });
 
   app.get("/api/logout", (req, res) => {

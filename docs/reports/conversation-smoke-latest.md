@@ -1,9 +1,9 @@
 # Conversation Smoke Test Report
 
-- **Date**: 2026-03-14T20:07:08Z
+- **Date**: 2026-03-14T20:09:55Z
 - **Result**: PASS (12 passed, 0 failed)
 - **Server**: http://localhost:5000
-- **Test Account**: smoke-1773518828@fluent.jp
+- **Test Account**: smoke-1773518995@fluent.jp
 
 | Test | Result |
 |------|--------|
