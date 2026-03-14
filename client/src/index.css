@@ -1,3 +1,4 @@
+/* Global styles and utility tokens for FluentDrama Japanese UI. */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
 
 @tailwind base;
@@ -275,3 +276,35 @@
     background-color: var(--business-pale);
   }
 }
+
+
+/* Dark luxury base */
+:root {
+  --font-jp: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+}
+
+.scene-bg {
+  background: hsl(222, 20%, 7%);
+  color: hsl(50, 30%, 90%);
+}
+
+.scene-card {
+  background: hsl(222, 15%, 12%);
+  border: 1px solid hsl(222, 12%, 20%);
+  border-radius: 16px;
+}
+
+.scene-card:hover {
+  border-color: hsl(38, 60%, 50%);
+}
+
+.jp-text {
+  font-family: var(--font-jp);
+  letter-spacing: 0.05em;
+  line-height: 1.8;
+}
+
+.quality-natural { color: hsl(152, 60%, 45%); }
+.quality-clear { color: hsl(207, 70%, 55%); }
+.quality-awkward { color: hsl(38, 80%, 55%); }
+.quality-retry { color: hsl(280, 60%, 60%); }

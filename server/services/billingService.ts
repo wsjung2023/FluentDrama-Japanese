@@ -1,3 +1,4 @@
+// Billing service encapsulating subscription lifecycle, checkout, and refund workflows.
 import { db } from '../db';
 import { billingPlans, userSubscriptions, paymentTransactions, refundRequests, users } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
@@ -299,7 +300,7 @@ export class BillingService {
     const existingPlan = existingSub ? await this.getPlanById(existingSub.planId) : null;
     const isPaidUpgrade = existingPlan && existingPlan.priceMonthlyKrw > 0;
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await (stripe.checkout.sessions as any).create({
       customer: customerId,
       payment_method_types: ['card'],
       line_items: [{ price: params.priceId, quantity: 1 }],

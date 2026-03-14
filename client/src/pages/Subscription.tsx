@@ -1,3 +1,4 @@
+// Subscription management page for plan selection, checkout, and billing actions.
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,14 +52,15 @@ export default function Subscription() {
     enabled: !!user,
   });
 
-  const subscribeMutation = useMutation<{ redirectUrl?: string }, Error, { tier: string; provider: string }>({
+  const checkoutMutation = useMutation<{ url?: string; redirectUrl?: string }, Error, { tier: string; provider: string }>({
     mutationFn: async ({ tier, provider }: { tier: string; provider: string }) => {
       const response = await apiRequest("POST", "/api/subscribe", { tier, provider });
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
+      const targetUrl = data.url ?? data.redirectUrl;
+      if (targetUrl) {
+        window.location.href = targetUrl;
       }
     },
     onError: (error) => {
@@ -84,8 +86,9 @@ export default function Subscription() {
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
+      const targetUrl = data.url ?? data.redirectUrl;
+      if (targetUrl) {
+        window.location.href = targetUrl;
       }
     },
     onError: () => {
@@ -128,7 +131,7 @@ export default function Subscription() {
       return;
     }
     setSelectedPlan(plan.id);
-    checkoutMutation.mutate(plan.stripePriceId);
+    checkoutMutation.mutate({ tier: plan.id, provider: "stripe" });
   };
 
   const handleCancel = () => {
@@ -200,7 +203,7 @@ export default function Subscription() {
         </div>
 
         {/* Current Subscription */}
-        {!!user && (
+        {!!user && currentPlan && subscription && (
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>현재 구독 상태</CardTitle>

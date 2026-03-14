@@ -45,6 +45,45 @@ function applyTemplate(template: string, context: Record<string, string>) {
   return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key: string) => context[key] ?? '');
 }
 
+
+function computeDeterministicFeedback(userInput: string) {
+  const normalized = userInput.trim();
+  if (!normalized) {
+    return {
+      accuracy: 0,
+      suggestions: ['짧은 일본어 문장부터 입력해보세요.'],
+      pronunciation: '입력이 없어 발음 피드백을 제공하지 않았습니다.',
+      naturalness: 0,
+      correction: null,
+      betterExpression: null,
+      koreanExplanation: '입력이 비어 있어 기본 피드백만 제공합니다.',
+    };
+  }
+
+  const hasJapanese = /[぀-ヿ㐀-龿]/.test(normalized);
+  const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
+  const baseScore = hasJapanese ? 65 : 35;
+  const lengthBonus = Math.min(25, tokenCount * 4);
+  const punctuationBonus = /[。？！!?.]/.test(normalized) ? 5 : 0;
+  const accuracy = Math.min(95, baseScore + lengthBonus + punctuationBonus);
+
+  return {
+    accuracy,
+    suggestions: hasJapanese
+      ? ['문장을 한 문장 더 이어서 말하면 자연스러움이 좋아집니다.']
+      : ['일본어 문자를 포함해서 다시 말해보세요.'],
+    pronunciation: hasJapanese
+      ? '전반적으로 안정적입니다. 문장 끝 억양을 조금 더 부드럽게 해보세요.'
+      : '일본어 발음 피드백을 위해 일본어 문장을 입력해주세요.',
+    naturalness: hasJapanese ? Math.min(95, accuracy - 2) : 30,
+    correction: hasJapanese ? null : '예: すみません、もう一度お願いします。',
+    betterExpression: hasJapanese ? null : '短くても 일본어 표현을 넣어보세요.',
+    koreanExplanation: hasJapanese
+      ? '문장 길이와 문장부호를 기준으로 기본 평가를 제공했습니다.'
+      : '일본어 문자가 없어 기초 점수로 평가했습니다.',
+  };
+}
+
 const conversationCharacterSchema = z.object({
   name: z.string().trim().min(1),
   style: z.enum(['cheerful', 'calm', 'strict']),
@@ -342,11 +381,7 @@ export function registerAiCoreRoutes(app: Express) {
         throw new Error('대화 응답 생성에 실패했습니다.');
       }
 
-      const feedback = {
-        accuracy: Math.floor(Math.random() * 21) + 80,
-        suggestions: ['문장을 조금 더 짧고 자연스럽게 말해보세요.'],
-        pronunciation: '발음이 전반적으로 안정적입니다. 억양만 조금 더 올려보세요.',
-      };
+      const feedback = computeDeterministicFeedback(userInput);
 
       const now = Date.now();
       const mergedHistorySource: ConversationHistoryItem[] = [
@@ -431,6 +466,9 @@ export function registerAiCoreRoutes(app: Express) {
     }
 
     try {
+      res.setHeader('Deprecation', 'true');
+      res.setHeader('Sunset', '2026-12-31');
+
       const conversationSchema = z.object({
         userInput: z.string().trim().min(1),
         conversationHistory: z.array(z.object({
@@ -486,7 +524,7 @@ export function registerAiCoreRoutes(app: Express) {
 
       res.json({
         response,
-        feedback: { accuracy: Math.floor(Math.random() * 20) + 80 },
+        feedback: computeDeterministicFeedback(userInput),
         message: '대화가 생성되었습니다!',
       });
     } catch (error) {

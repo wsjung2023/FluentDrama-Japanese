@@ -1,203 +1,96 @@
-import { useState, useCallback } from 'react';
-import { useAppStore } from '@/store/useAppStore';
-import { SCENARIO_PRESETS } from '@/constants/presets';
+// Scenario gallery page with metadata cards and collapsible custom scenario input.
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { useAppStore } from '@/store/useAppStore';
+import { SCENARIO_CONFIGS, type ScenarioId } from '@/constants/scenarios';
 
 export default function Scenario() {
-  const { 
-    audience, 
-    scenario, 
-    setScenario, 
-    setCurrentPage,
-    subtitleSettings,
-    setSubtitleSettings
-  } = useAppStore();
-  const { toast } = useToast();
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(scenario.presetKey || null);
-  const [isComposing, setIsComposing] = useState(false);
+  const { audience, scenario, setScenario, setCurrentPage, setAudience } = useAppStore();
+  const [isCustomOpen, setIsCustomOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<ScenarioId | undefined>(scenario.presetKey);
 
-  const presets = audience ? SCENARIO_PRESETS[audience] : [];
+  const visibleScenarios = useMemo(
+    () => Object.values(SCENARIO_CONFIGS).filter((item) => item.audience === 'all' || !audience || item.audience === audience),
+    [audience],
+  );
 
-  const handlePresetSelect = (presetKey: string) => {
-    setSelectedPreset(presetKey);
-    setScenario({ presetKey, freeText: '' });
-  };
-
-  // 한글 조합 상태 추적
-  const handleCompositionStart = useCallback(() => {
-    setIsComposing(true);
-  }, []);
-
-  const handleCompositionEnd = useCallback(() => {
-    setIsComposing(false);
-  }, []);
-
-  // 한글 입력 처리를 위한 핸들러 - 더 안정적인 접근법
-  const handleCustomTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    // 즉시 상태 업데이트
-    setScenario({ freeText: text, presetKey: undefined });
-    setSelectedPreset(null);
-  }, [setScenario]);
-
-  const handleNext = () => {
-    if (!scenario.presetKey && !scenario.freeText?.trim()) {
-      toast({
-        title: "Scenario Required",
-        description: "Please select a preset scenario or write a custom one.",
-        variant: "destructive",
-      });
-      return;
+  const startPreset = (scenarioId: ScenarioId) => {
+    const selected = SCENARIO_CONFIGS[scenarioId];
+    try {
+      setSelectedId(scenarioId);
+      setScenario({ presetKey: scenarioId, freeText: '' });
+      if (selected.audience !== 'all') {
+        setAudience(selected.audience);
+      }
+      setCurrentPage('character');
+    } catch {
+      setCurrentPage('scenario');
     }
-    setCurrentPage('character'); // 시나리오 선택 후 캐릭터
-  };
-
-  const handleBack = () => {
-    setCurrentPage('home'); // 시나리오에서 뒤로 = 대상선택
   };
 
   return (
-    <div className="animate-slide-up">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-poppins font-bold text-gray-900 mb-4">
-          Choose Your Learning Scenario
-        </h2>
-        <p className="text-gray-600">Pick a situation to practice or create your own custom scenario</p>
-      </div>
+    <div className="scene-bg min-h-screen rounded-2xl p-6">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <header>
+          <h2 className="text-2xl font-bold text-ivory">어떤 장면으로 들어갈까요?</h2>
+          <p className="text-sm text-ivory-muted">오늘 연습할 시나리오를 선택하세요.</p>
+        </header>
 
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Preset Scenarios */}
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                <i className="fas fa-list-ul mr-2 text-blue-600"></i>Preset Scenarios
-              </h3>
-              <div className="space-y-3">
-                {presets.map((preset) => (
-                  <button
-                    key={preset.key}
-                    onClick={() => handlePresetSelect(preset.key)}
-                    className={`w-full text-left p-4 border rounded-lg transition-colors ${
-                      selectedPreset === preset.key
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <i className={`${preset.icon} text-blue-600`}></i>
-                      <div>
-                        <p className="font-medium text-gray-900">{preset.title}</p>
-                        <p className="text-sm text-gray-600">{preset.description}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Scenario */}
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                <i className="fas fa-edit mr-2 text-purple-600"></i>커스텀 시나리오
-              </h3>
-              <div className="bg-gray-50 rounded-lg p-6">
-                <Label htmlFor="custom-scenario" className="block text-sm font-semibold text-gray-700 mb-2">
-                  원하는 상황을 설명해주세요
-                </Label>
-                <Textarea
-                  id="custom-scenario"
-                  value={scenario.freeText || ''}
-                  onChange={handleCustomTextChange}
-                  onCompositionStart={handleCompositionStart}
-                  onCompositionEnd={handleCompositionEnd}
-                  rows={6}
-                  placeholder="연습하고 싶은 상황을 한국어로 자세히 설명해주세요...
-예시: 
-- 해외 출장 중 호텔에서 룸서비스 주문하기
-- 외국인 친구와 한국 음식 소개하며 식사하기  
-- 국제 회의에서 프레젠테이션 질문 답변하기
-- 공항에서 항공편 변경 요청하기"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  상황, 등장인물, 목표를 구체적으로 작성해주세요
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Subtitle Settings */}
-          <div className="mt-8">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <i className="fas fa-closed-captioning text-blue-600"></i>
-                  자막 설정
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm font-medium">자막 표시</Label>
-                    <p className="text-xs text-gray-500">일본어 대화에 자막을 표시합니다</p>
-                  </div>
-                  <Switch
-                    checked={subtitleSettings.enabled}
-                    onCheckedChange={(checked) => setSubtitleSettings({ enabled: checked })}
-                  />
-                </div>
-                
-                {subtitleSettings.enabled && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-sm font-medium">한국어 번역</Label>
-                        <p className="text-xs text-gray-500">일본어 밑에 한국어 번역을 표시합니다</p>
-                      </div>
-                      <Switch
-                        checked={subtitleSettings.showKoreanTranslation}
-                        onCheckedChange={(checked) => setSubtitleSettings({ showKoreanTranslation: checked })}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-sm font-medium">발음 표기</Label>
-                        <p className="text-xs text-gray-500">일본어 발음을 로마자로 표시합니다</p>
-                      </div>
-                      <Switch
-                        checked={subtitleSettings.showPronunciation}
-                        onCheckedChange={(checked) => setSubtitleSettings({ showPronunciation: checked })}
-                      />
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="mt-8 flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={handleBack}
-              className="px-6 py-3"
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleScenarios.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => startPreset(item.id)}
+              className={`scene-card p-4 text-left transition ${selectedId === item.id ? 'border-gold bg-gold/5' : 'hover:border-gold/50'}`}
             >
-              <i className="fas fa-arrow-left mr-2"></i>Back
+              <div className="mb-3 flex items-start justify-between">
+                <p className="text-2xl">{item.icon}</p>
+                <span className="text-xs text-ivory-subtle">⏱ {item.estimatedMinutes}분</span>
+              </div>
+              <h3 className="text-lg font-semibold text-ivory">{item.title}</h3>
+              <p className="mt-1 text-sm text-ivory-muted">{item.description}</p>
+              <div className="mt-3 flex gap-2">
+                <Badge className="bg-blue-500/20 text-blue-300">{item.level}</Badge>
+                <Badge variant="secondary" className="bg-white/10 text-ivory-muted">{item.tone}</Badge>
+              </div>
+            </button>
+          ))}
+        </section>
+
+        <Card className="scene-card">
+          <CardHeader>
+            <CardTitle className="text-ivory">커스텀 시나리오</CardTitle>
+            <Button variant="ghost-gold" className="w-fit" onClick={() => setIsCustomOpen((prev) => !prev)}>
+              {isCustomOpen ? '접기' : '직접 입력하기'}
             </Button>
-            <Button 
-              onClick={handleNext}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700"
-            >
-              Next: Character <i className="fas fa-arrow-right ml-2"></i>
-            </Button>
-          </div>
-        </div>
+          </CardHeader>
+          {isCustomOpen && (
+            <CardContent className="space-y-3">
+              <Textarea
+                value={scenario.freeText || ''}
+                onChange={(event) => setScenario({ freeText: event.target.value, presetKey: undefined })}
+                placeholder="또는 직접 시나리오를 입력해보세요..."
+                className="min-h-32 bg-scene-surface text-ivory"
+              />
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => {
+                    try {
+                      setCurrentPage('character');
+                    } catch {
+                      setCurrentPage('scenario');
+                    }
+                  }}
+                >
+                  시작하기 →
+                </Button>
+              </div>
+            </CardContent>
+          )}
+        </Card>
       </div>
     </div>
   );
