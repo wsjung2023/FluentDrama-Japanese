@@ -9,8 +9,8 @@ import { registerSavedCharacterRoutes } from "./routes/savedCharacterRoutes";
 import { registerAiCoreRoutes } from "./routes/aiCoreRoutes";
 import { registerAiSupportRoutes } from "./routes/aiSupportRoutes";
 import { registerAiImageRoutes } from "./routes/aiImageRoutes";
+
 import { ensureJsonResponse } from "./routes/middleware/ensureJsonResponse";
-import billingRouter from "./routes/billing";
 
 type RouteRegistrar = (app: Express) => void;
 
@@ -28,10 +28,10 @@ const routeRegistrars: RouteRegistrar[] = [
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
-  app.use('/api/billing', billingRouter);
-
+  // Apply JSON response middleware to all API routes
   app.use('/api', ensureJsonResponse);
 
+  // Register API routes in deterministic order
   for (const registerRoute of routeRegistrars) {
     registerRoute(app);
   }

@@ -101,6 +101,48 @@ export const conversationMessages = pgTable("conversation_messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+
+
+// Prompt templates table (Plan 02 Sprint 2: prompt governance + DB masterization)
+export const promptTemplates = pgTable("prompt_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateKey: varchar("template_key").notNull(),
+  scenarioId: varchar("scenario_id"),
+  difficulty: varchar("difficulty"),
+  content: text("content").notNull(),
+  version: varchar("version").default("v1"),
+  description: text("description"),
+  updatedBy: varchar("updated_by"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+
+
+// Master config table (Plan 02 Sprint 2: runtime master flags / policy SSOT)
+export const masterConfigs = pgTable("master_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  configKey: varchar("config_key").notNull().unique(),
+  configValue: jsonb("config_value").$type<Record<string, unknown>>().notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Code standards table (Plan 02 Sprint 2: coding rules / guardrails SSOT)
+export const codeStandards = pgTable("code_standards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  standardKey: varchar("standard_key").notNull(),
+  category: varchar("category").notNull(), // e.g. backend|frontend|docs|ops
+  title: varchar("title").notNull(),
+  body: text("body").notNull(),
+  severity: varchar("severity").default("recommended"), // required|recommended|advisory
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Saved characters table for character reuse
 export const savedCharacters = pgTable("saved_characters", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -362,6 +404,9 @@ export type InsertSession = z.infer<typeof insertSessionSchema>;
 export type InsertConversationSession = z.infer<typeof insertConversationSessionSchema>;
 export type ConversationSessionRecord = typeof conversationSessions.$inferSelect;
 export type ConversationMessageRecord = typeof conversationMessages.$inferSelect;
+export type PromptTemplateRecord = typeof promptTemplates.$inferSelect;
+export type MasterConfigRecord = typeof masterConfigs.$inferSelect;
+export type CodeStandardRecord = typeof codeStandards.$inferSelect;
 export type InsertSavedCharacter = z.infer<typeof insertSavedCharacterSchema>;
 export type LearningSession = typeof learningSessions.$inferSelect;
 export type SavedCharacter = typeof savedCharacters.$inferSelect;

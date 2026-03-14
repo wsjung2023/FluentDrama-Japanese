@@ -38,6 +38,13 @@ const conversationSpeakerSchema = z.enum(['user', 'assistant', 'character']);
 const MAX_PROMPT_HISTORY_ITEMS = 24;
 const MAX_SESSION_HISTORY_ITEMS = 120;
 
+const DEFAULT_SYSTEM_TEMPLATE = 'You are a Japanese tutor role-playing scenario {{scenarioId}}. Difficulty: {{difficulty}}. Goal: {{userGoal}}. Keep responses concise and natural Japanese.';
+const DEFAULT_INITIAL_PROMPT_TEMPLATE = '{{scenarioId}} 상황에서 {{userGoal}} 목표를 연습해봅시다.';
+
+function applyTemplate(template: string, context: Record<string, string>) {
+  return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key: string) => context[key] ?? '');
+}
+
 const conversationCharacterSchema = z.object({
   name: z.string().trim().min(1),
   style: z.enum(['cheerful', 'calm', 'strict']),
@@ -222,9 +229,17 @@ export function registerAiCoreRoutes(app: Express) {
         userGoal,
       });
 
+      const initialPromptTemplate = await storage.getPromptTemplate('conversation_initial_prompt', scenarioId, difficulty);
+      const initialPrompt = applyTemplate(initialPromptTemplate?.content ?? DEFAULT_INITIAL_PROMPT_TEMPLATE, {
+        scenarioId,
+        difficulty,
+        characterId,
+        userGoal,
+      });
+
       res.json({
         sessionId: session.sessionId,
-        initialPrompt: `${scenarioId} 상황에서 ${userGoal} 목표를 연습해봅시다.`,
+        initialPrompt,
         scenario: {
           title: scenarioId,
           context: `${difficulty} 난이도 · 캐릭터 ${characterId}`,
@@ -273,14 +288,27 @@ export function registerAiCoreRoutes(app: Express) {
       const baseHistory = persistedHistory.length > 0
         ? persistedHistory
         : session.history;
+      const runtimePolicy = await storage.getMasterConfig('conversation.runtime.policy');
+      const configuredPromptLimit = Number(runtimePolicy?.configValue?.maxPromptHistoryItems);
+      const promptHistoryLimit = Number.isInteger(configuredPromptLimit) && configuredPromptLimit > 0
+        ? configuredPromptLimit
+        : MAX_PROMPT_HISTORY_ITEMS;
       const promptHistorySource = history.length > 0
         ? history
         : baseHistory.map(({ speaker, text }) => ({ speaker, text }));
-      const promptHistory = promptHistorySource.slice(-MAX_PROMPT_HISTORY_ITEMS);
+      const promptHistory = promptHistorySource.slice(-promptHistoryLimit);
+      const systemTemplate = await storage.getPromptTemplate('conversation_system', session.scenarioId, session.difficulty);
+      const systemPrompt = applyTemplate(systemTemplate?.content ?? DEFAULT_SYSTEM_TEMPLATE, {
+        scenarioId: session.scenarioId,
+        difficulty: session.difficulty,
+        characterId: session.characterId,
+        userGoal: session.userGoal,
+      });
+
       const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
         {
           role: 'system',
-          content: `You are a Japanese tutor role-playing scenario ${session.scenarioId}. Difficulty: ${session.difficulty}. Keep responses concise and natural Japanese.`,
+          content: systemPrompt,
         },
       ];
 
@@ -370,6 +398,8 @@ export function registerAiCoreRoutes(app: Express) {
 
       const persistedHistory = await storage.getConversationMessages(sessionId, userId);
       const resumeHistory = persistedHistory.length > 0 ? persistedHistory : session.history;
+      const restoredFrom = persistedHistory.length > 0 ? 'messages' : 'session';
+      const restoredAt = Date.now();
 
       res.json({
         sessionId,
@@ -379,6 +409,8 @@ export function registerAiCoreRoutes(app: Express) {
         userGoal: session.userGoal,
         history: resumeHistory,
         historyCount: resumeHistory.length,
+        restoredFrom,
+        restoredAt,
         lastFeedback: session.lastFeedback,
         message: '세션이 복원되었습니다',
       });

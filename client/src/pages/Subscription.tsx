@@ -51,9 +51,9 @@ export default function Subscription() {
     enabled: !!user,
   });
 
-  const checkoutMutation = useMutation({
-    mutationFn: async (priceId: string) => {
-      const response = await apiRequest("POST", "/api/billing/checkout", { priceId });
+  const subscribeMutation = useMutation<{ redirectUrl?: string }, Error, { tier: string; provider: string }>({
+    mutationFn: async ({ tier, provider }: { tier: string; provider: string }) => {
+      const response = await apiRequest("POST", "/api/subscribe", { tier, provider });
       return response.json();
     },
     onSuccess: (data) => {
@@ -199,13 +199,11 @@ export default function Subscription() {
           </Button>
         </div>
 
-        {subscription && currentPlan && (
-          <Card className="mb-6 bg-white/90 backdrop-blur shadow-sm">
-            <CardHeader className="pb-2 px-4 pt-4">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />
-                현재 구독
-              </CardTitle>
+        {/* Current Subscription */}
+        {!!user && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>현재 구독 상태</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4">
               <div className="flex flex-col gap-3">

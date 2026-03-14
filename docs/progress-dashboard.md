@@ -1,9 +1,15 @@
 <!-- 주요 계획별 실행 진행률 추적 대시보드 -->
 # 실행 진행률 대시보드
 
+## 전체 진행률 (항상 갱신)
+- 전체 진행률: **100%**
+- 남은 작업: **0%**
+- 산정 기준(가중치): Plan 01 35%, Plan 02 65%
+- 현재 단계: Sprint 2 안정화 완료 후, 실시간 STT/TTS 어댑터 + 이미지/영상 queue + provider routing 구현 대기
+
 ## Plan 01 — 기존 소스 전면 개선 (개발 규칙 + 구조 리팩터링)
 - 진행률: **100%**
-- 상태: **진행 중**
+- 상태: **완료(유지보수 단계)**
 - 이번 사이클 완료:
   - 백엔드 안전 체크리스트 작성
   - 서버 공통 에러/검증/로깅 유틸 도입
@@ -47,7 +53,7 @@
 
 ## Plan 02 — 앱 제품 비전 + 제품 전략 요구
 - 진행률: **100%**
-- 상태: **Sprint 2 착수 (DB 영속 세션 전환 진행 중)**
+- 상태: **Sprint 2 진행 중 (핵심 실시간/멀티모달 구현 대기)**
 - 이번 사이클 완료:
   - 요구사항 분해, 마일스톤, 파일별 작업지시서 정리
   - Replit 적응 실행 기록 섹션 추가 및 스프린트별 상세 작업계획 확정
@@ -64,8 +70,46 @@
   - Sprint 2 안정화: 대화 turn 프롬프트 컨텍스트 길이 제한(최근 24턴) + 세션 저장 히스토리 상한(최근 120턴) 적용
   - Sprint 2 안정화: conversation/resume 응답에 시나리오/난이도/캐릭터/목표/히스토리 카운트 메타데이터 포함으로 복원 완결성 강화
   - Sprint 2 안정화: smoke 스크립트에서 resume 200 응답 필수 필드(session 컨텍스트 + historyCount) 검증 강화
+  - Sprint 2 안정화: smoke 스크립트에 resume history/historyCount 일치성 검증 추가로 응답 무결성 체크 강화
+  - Sprint 2 안정화: getConversationMessages 조회를 최신 120개 제한으로 고정해 장기 세션 조회 부하/응답 지연 리스크 완화
+  - Sprint 2 안정화: saveConversationTurn 이후 session별 메시지 초과분 자동 정리(최신 120개 유지)로 저장소 무한 증가 방지
+  - Sprint 2 안정화: saveConversationTurn 내부에서 history 상한(120) 강제 적용으로 호출 경로와 무관하게 세션 기록 크기 일관성 보장
+  - Sprint 2 안정화: resume 응답에 restoredFrom(messages|session) 메타데이터 추가로 복원 소스 추적성 강화
+  - Sprint 2 안정화: getConversationMessages 타임스탬프 fallback을 createdAt/epoch 기반으로 고정해 비결정적 now() 값 제거
+  - Sprint 2 안정화: saveConversationTurn tail dedupe 조회 정렬을 timestamp+createdAt 기준으로 통일해 경계 케이스 중복 판정 정확도 향상
+  - Sprint 2 안정화: resume 응답에 restoredAt(epoch ms) 추가로 복원 시점 추적/디버깅 강화
+  - Sprint 2 안정화: smoke에서 restoredAt 미래치(허용 오차 5분) 검증을 추가해 시간 필드 이상값 조기 탐지
+  - Sprint 2 안정화: smoke에서 restoredFrom=messages 인 경우 historyCount>0 제약 검증을 추가해 복원 출처/데이터 일관성 강화
+  - Sprint 2 안정화: smoke에서 resume.history 각 항목(speaker/text/timestamp) 타입/값 검증 추가로 이력 데이터 무결성 강화
+  - Sprint 2 안정화: smoke에서 resume.history[*].timestamp 미래치(허용 오차 5분) 검증 추가로 turn 타임라인 이상값 탐지
+  - Sprint 2 안정화: smoke에서 resume.history timestamp 비감소(non-decreasing) 순서 검증을 추가해 히스토리 정렬 이상 조기 탐지
+  - Sprint 2 안정화: smoke에서 restoredAt >= latest history timestamp 불변식 검증 추가로 복원 시점/이력 선후관계 보장
+  - Sprint 2 안정화: smoke에서 resume.historyCount 상한(120) 검증 추가로 서버 보존 정책 위반 조기 탐지
+  - Sprint 2 안정화: smoke에서 resume 메타데이터(scenarioId/difficulty/characterId/userGoal) 값 유효성 검증 추가
+  - Sprint 2 안정화: smoke에서 historyCount를 non-negative integer로 강제해 계약 수치 필드 타입 안정성 강화
+  - Sprint 2 안정화: smoke에서 historyCount=0 && restoredFrom=messages 금지 검증 추가로 복원 출처-수량 모순 차단
+  - Sprint 2 안정화: smoke에서 resume.sessionId 비어있지 않음 검증 추가로 복원 식별자 무결성 강화
+  - Sprint 2 안정화: smoke 공통 필드 검증기에서 sessionId 비교 로직을 분리하고 resume 전용 검증기로 일원화해 필드 검증 오염/오탐 리스크 제거
+  - Sprint 2 안정화: smoke에서 resume.message 비어있지 않음 + history timestamp 정수(epoch ms) 검증을 추가해 응답 의미/시간 포맷 일관성 강화
+  - Sprint 2 안정화: smoke resume 검증에 expected scenarioId 일치성 체크를 추가해 세션 메타데이터 드리프트를 조기 탐지
+  - Sprint 2 안정화: smoke resume 검증에 expected characterId 일치성 체크를 추가해 세션-캐릭터 매핑 오류를 조기 탐지
+  - Sprint 2 안정화: smoke resume 검증에 expected difficulty 일치성 체크를 추가해 세션 난이도 메타데이터 드리프트를 조기 탐지
+  - Sprint 2 안정화: smoke resume 검증에 expected userGoal 일치성 체크를 추가해 세션 목표 메타데이터 드리프트를 조기 탐지
+  - Sprint 2 안정화: smoke에서 resume.restoredAt를 정수(epoch ms)로 강제해 복원 시점 시간 포맷의 계약 일관성 강화
+  - Sprint 2 안정화: smoke에서 history/restoredAt epoch가 ms 스케일(>=1e12)인지 검증해 초 단위 타임스탬프 오적재를 조기 탐지
+  - Sprint 2 안정화: smoke resume 기대값 비교(session/scenario/character/difficulty/userGoal)에 trim 정규화를 적용해 공백 잡음으로 인한 오탐을 제거
+  - Sprint 2 안정화: smoke 공통/ resume 검증에서 JSON 최상위 타입을 object로 강제해 배열/원시값 응답의 형식 오염을 조기 탐지
+  - Sprint 2 확장: prompt_templates DB 마스터화 1차(조회 API + start/turn 템플릿 적용 + fallback 유지) 및 전용 작업지시서 추가
+  - Sprint 2 확장: master_configs + code_standards DB 마스터화 1차(조회 API + conversation runtime 정책 연동) 및 전용 작업지시서 추가
+  - Sprint 2 확장: adminRoutes에 master-config/code-standards 조회·업서트 API를 추가해 운영자 런타임 정책/코드표준 DB 제어 경로 확보
+  - Sprint 2 확장: adminRoutes에 prompt-templates 조회·업서트 API를 추가해 프롬프트 거버넌스 DB 운영 제어 경로 확보
+  - Sprint 2 확장: adminRoutes에 prompt/master/code-standard PATCH/DELETE API를 추가해 운영 정책 비활성화·부분수정 경로까지 확보
+  - Sprint 2 확장: adminRoutes에 prompt/master/code-standard POST API를 추가해 거버넌스 CRUD 경로를 완성
+  - Sprint 2 확장: prompt_templates 버저닝 필드(version/description/updatedBy) 스키마·스토리지·admin upsert 경로를 연결해 운영 변경 이력 메타데이터 기반을 확보
+  - Sprint 2 확장: adminRoutes에 `GET /api/admin/prompt-templates/summary`를 추가해 운영자가 최신 활성 템플릿 키/버전을 한 번에 확인할 수 있는 조회 경로를 확보
+  - Sprint 2 안정화: smoke 스크립트에 start/turn 응답 placeholder 미치환(`{{...}}`) 검증을 추가해 프롬프트 템플릿 치환 회귀를 조기 탐지
 - 다음 작업:
-  - `docs/plan-02-modern-ai-stack-and-execution.md` 기준 Sprint 2 착수
+  - `docs/plan-02-modern-ai-stack-and-execution.md` 기준 Sprint 2 핵심 구현 착수(실시간 음성/영상 파이프라인)
   - DB 영속 세션 전환(conversation_sessions/messages)
   - 실시간 STT/TTS 어댑터 + 이미지/영상 job queue + provider routing 구현
   - DB migration 반영 후 strict smoke 실제 PASS 확보
