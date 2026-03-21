@@ -3,13 +3,20 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
+import { getNavigationCopy } from '@/constants/uiCopy';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { LanguageSelector } from '@/components/language-selector';
+import { getSelectableLanguages } from '@/constants/languages';
 
 export default function NavigationHeader() {
-  const { currentPage, setCurrentPage, resetState, audience, character } = useAppStore();
+  const { currentPage, setCurrentPage, resetState, audience, character, targetLanguage, supportLanguage, uiLanguage, setTargetLanguage, setSupportLanguage, setUiLanguage } = useAppStore();
   const { user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const copy = getNavigationCopy(uiLanguage);
+  const targetLanguageOptions = getSelectableLanguages('target');
+  const supportLanguageOptions = getSelectableLanguages('support');
+  const uiLanguageOptions = getSelectableLanguages('ui');
 
   const handleLogoClick = () => {
     resetState();
@@ -32,11 +39,16 @@ export default function NavigationHeader() {
             <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
               <i className="fas fa-graduation-cap text-white text-sm"></i>
             </div>
-            <h1 className="text-xl font-poppins font-semibold text-gray-900">🎭 AI Japanese Tutor</h1>
+            <h1 className="text-xl font-poppins font-semibold text-gray-900">{copy.logoTitle}</h1>
           </button>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-4">
+            <div className="flex items-center gap-2 border-r border-gray-200 pr-4">
+              <LanguageSelector label={copy.targetLanguage} value={targetLanguage} onChange={setTargetLanguage} options={targetLanguageOptions} />
+              <LanguageSelector label={copy.supportLanguage} value={supportLanguage} onChange={setSupportLanguage} options={supportLanguageOptions} />
+              <LanguageSelector label={copy.uiLanguage} value={uiLanguage} onChange={setUiLanguage} options={uiLanguageOptions} />
+            </div>
             <button 
               onClick={() => handleMenuClick('user-home')}
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -46,7 +58,7 @@ export default function NavigationHeader() {
               }`}
               data-testid="nav-user-home"
             >
-              <i className="fas fa-home mr-1"></i> 홈
+              <i className="fas fa-home mr-1"></i> {copy.home}
             </button>
             
             <button 
@@ -61,7 +73,7 @@ export default function NavigationHeader() {
               }`}
               data-testid="nav-audience"
             >
-              <i className="fas fa-users mr-1"></i> 학습
+              <i className="fas fa-users mr-1"></i> {copy.learning}
             </button>
             
             <button 
@@ -74,7 +86,7 @@ export default function NavigationHeader() {
               }`}
               data-testid="nav-character"
             >
-              <i className="fas fa-user mr-1"></i> 캐릭터
+              <i className="fas fa-user mr-1"></i> {copy.character}
             </button>
 
             <button 
@@ -86,10 +98,10 @@ export default function NavigationHeader() {
               }`}
               data-testid="nav-subscription"
             >
-              <i className="fas fa-crown mr-1"></i> 구독
-              {(user as any)?.subscriptionTier === 'starter' && <Badge className="bg-green-500 text-xs">스타터</Badge>}
-              {(user as any)?.subscriptionTier === 'pro' && <Badge className="bg-purple-500 text-xs">프로</Badge>}
-              {(user as any)?.subscriptionTier === 'premium' && <Badge className="bg-blue-500 text-xs">프리미엄</Badge>}
+              <i className="fas fa-crown mr-1"></i> {copy.subscription}
+              {(user as any)?.subscriptionTier === 'starter' && <Badge className="bg-green-500 text-xs">{copy.tierStarter}</Badge>}
+              {(user as any)?.subscriptionTier === 'pro' && <Badge className="bg-purple-500 text-xs">{copy.tierPro}</Badge>}
+              {(user as any)?.subscriptionTier === 'premium' && <Badge className="bg-blue-500 text-xs">{copy.tierPremium}</Badge>}
             </button>
 
 
@@ -104,7 +116,7 @@ export default function NavigationHeader() {
                 }`}
                 data-testid="nav-admin"
               >
-                <i className="fas fa-cog mr-1"></i> 관리자
+                <i className="fas fa-cog mr-1"></i> {copy.admin}
               </button>
             )}
 
@@ -115,7 +127,7 @@ export default function NavigationHeader() {
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               data-testid="nav-start-learning"
             >
-              <i className="fas fa-play mr-1"></i> 학습 시작
+              <i className="fas fa-play mr-1"></i> {copy.startLearning}
             </Button>
 
             <Button 
@@ -133,7 +145,7 @@ export default function NavigationHeader() {
               }}
               data-testid="nav-logout"
             >
-              로그아웃
+              {copy.logout}
             </Button>
           </nav>
 
@@ -150,7 +162,12 @@ export default function NavigationHeader() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 bg-white">
-            <div className="px-4 py-2 space-y-1">
+            <div className="px-4 py-2 space-y-3">
+              <div className="space-y-2 rounded-md border border-gray-200 p-3">
+                <LanguageSelector label={copy.targetLanguage} value={targetLanguage} onChange={setTargetLanguage} options={targetLanguageOptions} />
+                <LanguageSelector label={copy.supportLanguage} value={supportLanguage} onChange={setSupportLanguage} options={supportLanguageOptions} />
+                <LanguageSelector label={copy.uiLanguage} value={uiLanguage} onChange={setUiLanguage} options={uiLanguageOptions} />
+              </div>
               <button 
                 onClick={() => handleMenuClick('user-home')}
                 className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -160,7 +177,7 @@ export default function NavigationHeader() {
                 }`}
                 data-testid="mobile-nav-user-home"
               >
-                <i className="fas fa-home mr-2"></i> 홈
+                <i className="fas fa-home mr-2"></i> {copy.home}
               </button>
               
               <button 
@@ -175,7 +192,7 @@ export default function NavigationHeader() {
                 }`}
                 data-testid="mobile-nav-audience"
               >
-                <i className="fas fa-users mr-2"></i> 학습
+                <i className="fas fa-users mr-2"></i> {copy.learning}
               </button>
               
               <button 
@@ -188,7 +205,7 @@ export default function NavigationHeader() {
                 }`}
                 data-testid="mobile-nav-character"
               >
-                <i className="fas fa-user mr-2"></i> 캐릭터
+                <i className="fas fa-user mr-2"></i> {copy.character}
               </button>
 
               <button 
@@ -200,10 +217,10 @@ export default function NavigationHeader() {
                 }`}
                 data-testid="mobile-nav-subscription"
               >
-                <i className="fas fa-crown mr-2"></i> 구독
-                {(user as any)?.subscriptionTier === 'starter' && <Badge className="bg-green-500 text-xs">스타터</Badge>}
-                {(user as any)?.subscriptionTier === 'pro' && <Badge className="bg-purple-500 text-xs">프로</Badge>}
-                {(user as any)?.subscriptionTier === 'premium' && <Badge className="bg-blue-500 text-xs">프리미엄</Badge>}
+                <i className="fas fa-crown mr-2"></i> {copy.subscription}
+                {(user as any)?.subscriptionTier === 'starter' && <Badge className="bg-green-500 text-xs">{copy.tierStarter}</Badge>}
+                {(user as any)?.subscriptionTier === 'pro' && <Badge className="bg-purple-500 text-xs">{copy.tierPro}</Badge>}
+                {(user as any)?.subscriptionTier === 'premium' && <Badge className="bg-blue-500 text-xs">{copy.tierPremium}</Badge>}
               </button>
 
 
@@ -218,7 +235,7 @@ export default function NavigationHeader() {
                   }`}
                   data-testid="mobile-nav-admin"
                 >
-                  <i className="fas fa-cog mr-2"></i> 관리자
+                  <i className="fas fa-cog mr-2"></i> {copy.admin}
                 </button>
               )}
 
@@ -229,7 +246,7 @@ export default function NavigationHeader() {
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed mt-2"
                 data-testid="mobile-nav-start-learning"
               >
-                <i className="fas fa-play mr-2"></i> 학습 시작
+                <i className="fas fa-play mr-2"></i> {copy.startLearning}
               </Button>
 
               <Button 
@@ -247,7 +264,7 @@ export default function NavigationHeader() {
                 }}
                 data-testid="mobile-nav-logout"
               >
-                로그아웃
+                {copy.logout}
               </Button>
             </div>
           </div>

@@ -1,8 +1,10 @@
 import { useAppStore } from '@/store/useAppStore';
 import { AudienceCard } from '@/components/audience-card';
+import { getAudienceSelectionCopy } from '@/constants/uiCopy';
 
 export default function AudienceSelection() {
-  const { setCurrentPage, setAudience } = useAppStore();
+  const { setCurrentPage, setAudience, uiLanguage } = useAppStore();
+  const copy = getAudienceSelectionCopy(uiLanguage);
 
   const handleAudienceSelect = (audience: 'student' | 'general' | 'business') => {
     setAudience(audience);
@@ -15,10 +17,10 @@ export default function AudienceSelection() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-poppins font-bold text-gray-900 mb-4">
-            어떤 분야를 학습하고 싶으신가요?
+            {copy.title}
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            당신의 목표에 맞는 일본어 학습 과정을 선택해주세요
+            {copy.subtitle}
           </p>
         </div>
 
@@ -26,14 +28,16 @@ export default function AudienceSelection() {
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           <AudienceCard
             audience="student"
-            title="중고등학생"
-            description="학교 일본어와 대학 입시를 위한 체계적 학습"
+            title={copy.options.student.title}
+            description={copy.options.student.description}
             icon="fas fa-graduation-cap"
             cefr="A2-B2"
+            cefrLabel={copy.cefrLabel}
+            buttonLabel={copy.options.student.startButton}
             scenarios={[
-              { icon: "fas fa-book", text: "교실 상황" },
-              { icon: "fas fa-users", text: "친구들과 대화" },
-              { icon: "fas fa-presentation", text: "발표 연습" }
+              { icon: "fas fa-book", text: copy.options.student.scenarios[0] },
+              { icon: "fas fa-users", text: copy.options.student.scenarios[1] },
+              { icon: "fas fa-presentation", text: copy.options.student.scenarios[2] }
             ]}
             theme={{
               name: "student",
@@ -49,14 +53,16 @@ export default function AudienceSelection() {
 
           <AudienceCard
             audience="general"
-            title="일반인"
-            description="일상생활과 여행에서 사용하는 실용 일본어"
+            title={copy.options.general.title}
+            description={copy.options.general.description}
             icon="fas fa-globe"
             cefr="A1-B2"
+            cefrLabel={copy.cefrLabel}
+            buttonLabel={copy.options.general.startButton}
             scenarios={[
-              { icon: "fas fa-plane", text: "여행 상황" },
-              { icon: "fas fa-shopping-cart", text: "쇼핑" },
-              { icon: "fas fa-utensils", text: "레스토랑" }
+              { icon: "fas fa-plane", text: copy.options.general.scenarios[0] },
+              { icon: "fas fa-shopping-cart", text: copy.options.general.scenarios[1] },
+              { icon: "fas fa-utensils", text: copy.options.general.scenarios[2] }
             ]}
             theme={{
               name: "general",
@@ -72,14 +78,16 @@ export default function AudienceSelection() {
 
           <AudienceCard
             audience="business"
-            title="비즈니스"
-            description="업무와 비즈니스 상황에서의 전문 일본어"
+            title={copy.options.business.title}
+            description={copy.options.business.description}
             icon="fas fa-briefcase"
             cefr="B1-C1"
+            cefrLabel={copy.cefrLabel}
+            buttonLabel={copy.options.business.startButton}
             scenarios={[
-              { icon: "fas fa-handshake", text: "미팅" },
-              { icon: "fas fa-chart-line", text: "프레젠테이션" },
-              { icon: "fas fa-envelope", text: "이메일" }
+              { icon: "fas fa-handshake", text: copy.options.business.scenarios[0] },
+              { icon: "fas fa-chart-line", text: copy.options.business.scenarios[1] },
+              { icon: "fas fa-envelope", text: copy.options.business.scenarios[2] }
             ]}
             theme={{
               name: "business",

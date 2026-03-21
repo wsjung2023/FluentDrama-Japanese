@@ -7,6 +7,8 @@ interface AudienceCardProps {
   icon: string;
   scenarios: Array<{ icon: string; text: string }>;
   cefr: string;
+  cefrLabel?: string;
+  buttonLabel: string;
   theme: {
     name: string;
     colors: {
@@ -26,6 +28,8 @@ export function AudienceCard({
   icon,
   scenarios,
   cefr,
+  cefrLabel = 'CEFR Level',
+  buttonLabel,
   theme,
   onClick
 }: AudienceCardProps) {
@@ -75,10 +79,10 @@ export function AudienceCard({
               ? 'bg-white bg-opacity-20' 
               : 'bg-white bg-opacity-50'
           }`}>
-            <span className={`text-sm font-semibold ${
+              <span className={`text-sm font-semibold ${
               isBusinessTheme ? 'text-white' : 'text-gray-700'
             }`}>
-              CEFR Level: {cefr}
+              {cefrLabel}: {cefr}
             </span>
           </div>
         </div>
@@ -93,7 +97,7 @@ export function AudienceCard({
                   : 'bg-blue-600 hover:bg-blue-700 text-white'
             }`}
           >
-            Start {title.split('/')[0]} Journey
+            {buttonLabel}
           </Button>
         </div>
       </div>

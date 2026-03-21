@@ -6,6 +6,8 @@ import { requireAuthenticated } from "./middleware/authGuard";
 import { getErrorMessage, getErrorStatus } from "../lib/apiError";
 import { parseOrThrow } from "../lib/validate";
 import { logError } from "../lib/logger";
+import { languageCodeSchema } from '@shared/language';
+import { getLanguageLabel, getPhase2LanguagePack } from '../services/phase2LanguagePack';
 
 const characterStyleSchema = z.enum(['cheerful', 'calm', 'strict']);
 const characterGenderSchema = z.enum(['male', 'female']);
@@ -93,8 +95,14 @@ JSON 형식으로 응답하세요: {
     }
 
     try {
-      const translateSchema = z.object({ text: z.string().min(1, 'Text is required') });
-      const { text } = parseOrThrow(translateSchema, req.body);
+      const translateSchema = z.object({
+        text: z.string().min(1, 'Text is required'),
+        targetLanguage: languageCodeSchema.optional(),
+        supportLanguage: languageCodeSchema.optional(),
+      });
+      const { text, targetLanguage = 'ja', supportLanguage = 'en' } = parseOrThrow(translateSchema, req.body);
+      const targetLabel = getLanguageLabel(targetLanguage);
+      const supportLabel = getLanguageLabel(supportLanguage);
 
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -108,11 +116,11 @@ JSON 형식으로 응답하세요: {
             {
               role: 'system',
               content:
-                "You are a Japanese language assistant. For Japanese text, provide Korean translation and romanized pronunciation. Respond in JSON format with 'koreanTranslation' and 'pronunciation' fields.",
+                `You are a ${targetLabel} language assistant. For ${targetLabel} text, provide a ${supportLabel} learner-friendly translation and a pronunciation guide when helpful. Respond in JSON format with 'supportTranslation' and 'pronunciation' fields.`,
             },
             {
               role: 'user',
-              content: `Provide Korean translation and romanized pronunciation for this Japanese text: "${text}"`,
+              content: `Provide a ${supportLabel} translation and pronunciation help for this ${targetLabel} text: "${text}"`,
             },
           ],
           response_format: { type: 'json_object' },
@@ -129,8 +137,9 @@ JSON 형식으로 응답하세요: {
       const content = JSON.parse(result.choices[0].message.content);
 
       res.json({
-        koreanTranslation: content.koreanTranslation || '',
-        pronunciation: content.pronunciation || '',
+        supportTranslation: content.supportTranslation || content.koreanTranslation || '',
+        koreanTranslation: content.koreanTranslation || content.supportTranslation || '',
+        pronunciation: content.pronunciation || getPhase2LanguagePack(targetLanguage).buildPronunciationGuide(text) || '',
         message: '번역 및 발음이 생성되었습니다!',
       });
     } catch (error) {
@@ -152,7 +161,7 @@ JSON 형식으로 응답하세요: {
     try {
       const speechSchema = z.object({
         audioBlob: z.string().min(1, 'Audio data is required'),
-        language: z.enum(['en', 'ko', 'ja']).optional(),
+        language: z.enum(['en', 'ko', 'ja', 'fr', 'es', 'zh', 'de', 'vi', 'th', 'ar']).optional(),
       });
       const { audioBlob, language } = parseOrThrow(speechSchema, req.body);
 

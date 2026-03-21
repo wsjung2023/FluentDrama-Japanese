@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { useAppStore } from "@/store/useAppStore";
+import { getAuthCopy, getNavigationCopy } from "@/constants/uiCopy";
 import { ArrowLeft, ExternalLink, Copy } from "lucide-react";
 
 export default function Auth() {
@@ -20,7 +21,9 @@ export default function Auth() {
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
   const [showBrowserWarning, setShowBrowserWarning] = useState(false);
   const { toast } = useToast();
-  const { setCurrentPage } = useAppStore();
+  const { setCurrentPage, uiLanguage } = useAppStore();
+  const copy = getAuthCopy(uiLanguage);
+  const navigationCopy = getNavigationCopy(uiLanguage);
 
   // 인앱 브라우저 감지
   useEffect(() => {
@@ -47,8 +50,8 @@ export default function Auth() {
     },
     onError: (error: any) => {
       toast({
-        title: "로그인 실패",
-        description: error.message || "이메일과 비밀번호를 확인해주세요.",
+        title: copy.loginFailed,
+        description: error.message || copy.loginFailedDescription,
         variant: "destructive"
       });
     }
@@ -65,8 +68,8 @@ export default function Auth() {
     },
     onError: (error: any) => {
       toast({
-        title: "회원가입 실패",
-        description: error.message || "회원가입 중 오류가 발생했습니다.",
+        title: copy.signupFailed,
+        description: error.message || copy.signupFailedDescription,
         variant: "destructive"
       });
     }
@@ -83,8 +86,8 @@ export default function Auth() {
     } else {
       if (!formData.firstName || !formData.lastName) {
         toast({
-          title: "입력 오류",
-          description: "모든 필드를 입력해주세요.",
+          title: copy.inputError,
+          description: copy.inputErrorDescription,
           variant: "destructive"
         });
         return;
@@ -105,8 +108,8 @@ export default function Auth() {
     try {
       await navigator.clipboard.writeText(window.location.href);
       toast({
-        title: "복사 완료",
-        description: "링크가 클립보드에 복사되었습니다.",
+        title: copy.copied,
+        description: copy.copiedDescription,
       });
     } catch (err) {
       // 클립보드 접근이 안되면 fallback
@@ -117,8 +120,8 @@ export default function Auth() {
       document.execCommand('copy');
       document.body.removeChild(textArea);
       toast({
-        title: "복사 완료",
-        description: "링크가 클립보드에 복사되었습니다.",
+        title: copy.copied,
+        description: copy.copiedDescription,
       });
     }
   };
@@ -144,13 +147,13 @@ export default function Auth() {
           data-testid="button-back-to-landing"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          뒤로가기
+          {copy.back}
         </Button>
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">🎭 AI Japanese Tutor</h1>
-          <p className="text-gray-600 dark:text-gray-300">드라마틱한 시나리오로 일본어를 배우세요</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{navigationCopy.logoTitle}</h1>
+          <p className="text-gray-600 dark:text-gray-300">{copy.subtitle}</p>
         </div>
 
         {/* 카카오톡 브라우저 안내문 */}
@@ -159,11 +162,11 @@ export default function Auth() {
             <CardContent className="p-4">
               <div className="text-center text-amber-800 dark:text-amber-200">
                 <ExternalLink className="w-6 h-6 mx-auto mb-2" />
-                <p className="text-sm font-medium mb-1">📱 카카오톡에서 보고 계신가요?</p>
+                <p className="text-sm font-medium mb-1">{copy.inAppTitle}</p>
                 <p className="text-xs">
-                  구글 로그인은 <strong>크롬</strong>이나 <strong>사파리</strong> 브라우저에서만 가능해요.
+                  {copy.inAppDescription}
                   <br />
-                  구글 로그인 버튼을 누르면 자동으로 외부 브라우저로 이동됩니다.
+                  {copy.inAppDescriptionLine2}
                 </p>
               </div>
             </CardContent>
@@ -172,9 +175,9 @@ export default function Auth() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{isLogin ? '로그인' : '회원가입'}</CardTitle>
+            <CardTitle>{isLogin ? copy.login : copy.signup}</CardTitle>
             <CardDescription>
-              {isLogin ? '계정에 로그인하세요' : '새 계정을 만드세요'}
+              {isLogin ? copy.loginDescription : copy.signupDescription}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -182,7 +185,7 @@ export default function Auth() {
               {!isLogin && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName">이름</Label>
+                    <Label htmlFor="firstName">{copy.firstName}</Label>
                     <Input
                       id="firstName"
                       type="text"
@@ -193,7 +196,7 @@ export default function Auth() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">성</Label>
+                    <Label htmlFor="lastName">{copy.lastName}</Label>
                     <Input
                       id="lastName"
                       type="text"
@@ -207,7 +210,7 @@ export default function Auth() {
               )}
               
               <div>
-                <Label htmlFor="email">이메일</Label>
+                <Label htmlFor="email">{copy.email}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -219,7 +222,7 @@ export default function Auth() {
               </div>
               
               <div>
-                <Label htmlFor="password">비밀번호</Label>
+                <Label htmlFor="password">{copy.password}</Label>
                 <Input
                   id="password"
                   type="password"
@@ -236,7 +239,7 @@ export default function Auth() {
                 disabled={loginMutation.isPending || registerMutation.isPending}
                 data-testid="button-submit"
               >
-                {isLogin ? '로그인' : '회원가입'}
+                {isLogin ? copy.login : copy.signup}
               </Button>
             </form>
 
@@ -245,7 +248,7 @@ export default function Auth() {
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">또는</span>
+                <span className="bg-background px-2 text-muted-foreground">{copy.or}</span>
               </div>
             </div>
 
@@ -255,11 +258,11 @@ export default function Auth() {
                   <div className="text-center space-y-4">
                     <div className="text-orange-800 dark:text-orange-200">
                       <ExternalLink className="w-8 h-8 mx-auto mb-2" />
-                      <h3 className="font-semibold mb-2">외부 브라우저 필요</h3>
+                      <h3 className="font-semibold mb-2">{copy.externalBrowserRequired}</h3>
                       <p className="text-sm">
-                        구글 로그인은 보안상 카카오톡 브라우저에서는 사용할 수 없습니다.
+                        {copy.externalBrowserDescription}
                         <br />
-                        크롬이나 사파리 브라우저에서 열어주세요.
+                        {copy.externalBrowserDescriptionLine2}
                       </p>
                     </div>
                     
@@ -271,7 +274,7 @@ export default function Auth() {
                         data-testid="button-open-external"
                       >
                         <ExternalLink className="w-4 h-4 mr-2" />
-                        외부 브라우저에서 열기
+                        {copy.openExternalBrowser}
                       </Button>
                       
                       <Button 
@@ -281,7 +284,7 @@ export default function Auth() {
                         data-testid="button-copy-url"
                       >
                         <Copy className="w-4 h-4 mr-2" />
-                        링크 복사하기
+                        {copy.copyLink}
                       </Button>
                       
                       <Button 
@@ -290,7 +293,7 @@ export default function Auth() {
                         onClick={() => setShowBrowserWarning(false)}
                         data-testid="button-cancel-warning"
                       >
-                        취소
+                        {copy.cancel}
                       </Button>
                     </div>
                   </div>
@@ -309,7 +312,7 @@ export default function Auth() {
                   <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                   <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
-                구글로 로그인
+                {copy.continueWithGoogle}
               </Button>
             )}
 
@@ -317,10 +320,10 @@ export default function Auth() {
               <button
                 type="button"
                 onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-blue-600 hover:underline"
-                data-testid="button-switch-mode"
-              >
-                {isLogin ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
+              className="text-sm text-blue-600 hover:underline"
+              data-testid="button-switch-mode"
+            >
+                {isLogin ? copy.toggleSignup : copy.toggleAuth}
               </button>
             </div>
           </CardContent>

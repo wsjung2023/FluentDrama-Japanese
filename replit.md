@@ -41,6 +41,16 @@ This is an AI English Tutor application that provides personalized, interactive 
 
 Preferred communication style: Simple, everyday language.
 
+## Development Execution Principles for Full Phase 1/2/3 Plan (User-Mandated)
+- **Interpretation rule**: “1단계/2단계/3단계” always means the **entire master plan phases**, not temporary task labels or partial substeps.
+- **Progress reporting rule**: While implementing, always communicate current progress as a percentage (for example 10%, 35%, 70%).
+- **File size rule**: Avoid letting implementation files grow beyond roughly **500 lines**; split by responsibility before files become too large.
+- **Modularization rule**: Prefer modular, encapsulated, reusable components/services/helpers over tightly coupled feature code.
+- **No hardcoding rule**: Do not build future-facing features on hardcoded values or one-off branching; use configuration, code standards, and master-DB-oriented structures.
+- **Error handling rule**: Any threat-prone or failure-prone integration must include explicit error handling; use try/catch-based protection around risky runtime operations and API/integration boundaries.
+- **Reuse rule**: Prioritize reusable schemas, shared types, and reusable service abstractions over duplicated logic.
+- **Architecture rule**: Design for long-term extensibility first, especially for multilingual features, prompt rules, metadata, and scenario systems.
+
 ## Development Guidelines (Critical)
 - **NEVER break existing authentication/core systems when adding new features**
 - **Always test incrementally** - make small changes and verify they work before proceeding
@@ -97,3 +107,21 @@ Preferred communication style: Simple, everyday language.
 - Cost-aware API usage with proper error boundaries
 - Mobile-responsive design with audience-specific theming
 - Progressive enhancement from basic form interactions to AI-powered features
+
+## Autonomous Phase Execution Protocol (March 2026)
+- The in-repo coding agent must treat **Phase 1 QA closure + Phase 2 planning/execution kickoff** as a **single continuous assignment** when requested.
+- Do **not** stop after a tiny substep just to ask “continue?” unless there is a real blocker such as:
+  - missing secret/API credential
+  - production-only dependency that cannot be simulated locally
+  - destructive migration / billing / auth risk that needs human approval
+  - conflicting product direction that changes user-facing behavior significantly
+- For normal implementation work, keep going in this order without waiting for another instruction:
+  1. finish the assigned code work
+  2. run available local checks
+  3. list only the runtime-only QA items that truly cannot be completed here
+  4. if Phase 1 is structurally complete, immediately draft the Phase 2 execution plan
+  5. continue into the next approved Phase 2 batch unless blocked
+- When runtime/browser verification is needed, the agent should execute as much of the checklist as the environment allows and report **completed / blocked / follow-up needed** instead of asking for repeated permission.
+- Progress updates should be grouped into meaningful milestones, not micro-status chatter. Prefer: **what finished / what is blocked / what starts next**.
+- If a phase is mostly complete except for environment-limited QA, mark development as **implementation complete, runtime QA pending**, then continue with the next planning artifact or implementation batch instead of pausing the whole stream.
+

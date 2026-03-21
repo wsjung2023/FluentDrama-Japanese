@@ -1,5 +1,4 @@
-import React, { useEffect } from "react";
-import { Switch, Route } from "wouter";
+import React, { Suspense, lazy, useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,19 +12,26 @@ import NavigationHeader from "@/components/navigation-header";
 import LoadingModal from "@/components/loading-modal";
 import ErrorModal from "@/components/error-modal";
 
-import Auth from "@/pages/Auth";
-import Landing from "@/pages/Landing";
-import UserHome from "@/pages/Home";
-import Subscription from "@/pages/Subscription";
-import Admin from "@/pages/Admin";
-import Character from "@/pages/character";
-import Scenario from "@/pages/scenario";
-import Playground from "@/pages/playground";
-import NotFound from "@/pages/not-found";
-import AudienceSelection from "@/pages/AudienceSelection";
-import Refund from "@/pages/Refund";
-import Terms from "@/pages/Terms";
-import Privacy from "@/pages/Privacy";
+const Auth = lazy(() => import("@/pages/Auth"));
+const Landing = lazy(() => import("@/pages/Landing"));
+const UserHome = lazy(() => import("@/pages/Home"));
+const Subscription = lazy(() => import("@/pages/Subscription"));
+const Admin = lazy(() => import("@/pages/Admin"));
+const Character = lazy(() => import("@/pages/character"));
+const Scenario = lazy(() => import("@/pages/scenario"));
+const Playground = lazy(() => import("@/pages/playground"));
+const AudienceSelection = lazy(() => import("@/pages/AudienceSelection"));
+const Refund = lazy(() => import("@/pages/Refund"));
+const Terms = lazy(() => import("@/pages/Terms"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading" />
+    </div>
+  );
+}
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -40,21 +46,16 @@ function Router() {
       '/subscription': 'subscription',
       '/pricing': 'subscription',
     };
-    
+
     if (pageMap[path] && currentPage !== pageMap[path]) {
       setCurrentPage(pageMap[path]);
     }
   }, []);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading"/>
-      </div>
-    );
+    return <PageLoader />;
   }
 
-  // Policy pages (always accessible)
   if (currentPage === 'refund') {
     return <Refund />;
   }
@@ -65,7 +66,6 @@ function Router() {
     return <Privacy />;
   }
 
-  // Show landing page or auth page if not authenticated
   if (!isAuthenticated) {
     if (currentPage === 'auth') {
       return <Auth />;
@@ -73,20 +73,17 @@ function Router() {
     return <Landing />;
   }
 
-  // Show subscription page if accessing subscription route
   if (currentPage === 'subscription') {
     return <Subscription />;
   }
 
-  // Show user home page if accessing user home route
   if (currentPage === 'user-home') {
     return <UserHome />;
   }
 
-  // Original app routing for authenticated users
   switch (currentPage) {
     case 'home':
-      return <AudienceSelection />; // 학습 시작 시 대상 선택부터
+      return <AudienceSelection />;
     case 'admin':
       return <Admin />;
     case 'character':
@@ -108,7 +105,9 @@ function AppContent() {
       <div className="min-h-screen bg-gray-50">
         {isAuthenticated && <NavigationHeader />}
         <main className={isAuthenticated ? "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" : ""}>
-          <Router />
+          <Suspense fallback={<PageLoader />}>
+            <Router />
+          </Suspense>
         </main>
       </div>
       <LoadingModal />
@@ -120,14 +119,12 @@ function AppContent() {
 }
 
 function App() {
-  // 앱 초기화 시 에러 처리
   useEffect(() => {
-    // 모듈 로딩 에러 방지
     const handleError = (event: ErrorEvent) => {
       console.log('모듈 로딩 오류 처리됨:', event.message);
       event.preventDefault();
     };
-    
+
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       console.log('Promise 거부 처리됨:', event.reason);
       event.preventDefault();

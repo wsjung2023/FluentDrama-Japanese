@@ -3,16 +3,23 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useConversationSession } from '@/hooks/useConversationSession';
+import { getPracticePageCopy } from '@/constants/uiCopy';
 import { useAppStore } from '@/store/useAppStore';
 
 export default function PlaygroundNew() {
-  const { audience, character, scenario } = useAppStore();
+  const { audience, character, scenario, targetLanguage, supportLanguage, uiLanguage, difficultyFramework, difficultyLevel } = useAppStore();
   const [draft, setDraft] = useState('');
+  const copy = getPracticePageCopy(uiLanguage);
   const session = useConversationSession({
     scenarioId: scenario.presetKey || 'free-talk',
-    character: { name: character.name || '튜터', gender: character.gender, style: character.style },
+    character: { name: character.name || copy.defaultTutorName, gender: character.gender, style: character.style },
     audience: audience || 'general',
     difficulty: 'beginner',
+    targetLanguage,
+    supportLanguage,
+    uiLanguage,
+    difficultyFramework,
+    difficultyLevel,
   });
 
   useEffect(() => {
@@ -37,8 +44,8 @@ export default function PlaygroundNew() {
           </Card>
         ))}
         <div className="flex gap-2">
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} className="flex-1 rounded border border-scene-border bg-scene-surface p-2 text-ivory" />
-          <Button onClick={() => session.sendTurn(draft).then(() => setDraft('')).catch(() => null)} disabled={session.isLoading}>전송</Button>
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={copy.inputPlaceholder} className="flex-1 rounded border border-scene-border bg-scene-surface p-2 text-ivory" />
+          <Button onClick={() => session.sendTurn(draft).then(() => setDraft('')).catch(() => null)} disabled={session.isLoading}>{copy.send}</Button>
         </div>
       </div>
     </div>

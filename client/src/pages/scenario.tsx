@@ -5,20 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/store/useAppStore';
-import { SCENARIO_CONFIGS, type ScenarioId } from '@/constants/scenarios';
+import { getScenarioCopy } from '@/constants/uiCopy';
+import { getScenarioConfigMap, type ScenarioId } from '@/constants/scenarios';
 
 export default function Scenario() {
-  const { audience, scenario, setScenario, setCurrentPage, setAudience } = useAppStore();
+  const { audience, scenario, targetLanguage, uiLanguage, setScenario, setCurrentPage, setAudience } = useAppStore();
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<ScenarioId | undefined>(scenario.presetKey);
+  const scenarioCopy = getScenarioCopy(uiLanguage);
+  const scenarioConfigs = useMemo(() => getScenarioConfigMap(targetLanguage), [targetLanguage]);
 
   const visibleScenarios = useMemo(
-    () => Object.values(SCENARIO_CONFIGS).filter((item) => item.audience === 'all' || !audience || item.audience === audience),
-    [audience],
+    () => Object.values(scenarioConfigs).filter((item) => item.audience === 'all' || !audience || item.audience === audience),
+    [audience, scenarioConfigs],
   );
 
   const startPreset = (scenarioId: ScenarioId) => {
-    const selected = SCENARIO_CONFIGS[scenarioId];
+    const selected = scenarioConfigs[scenarioId];
     setSelectedId(scenarioId);
     setScenario({ presetKey: scenarioId, freeText: '' });
     if (selected.audience !== 'all') {
@@ -31,8 +34,8 @@ export default function Scenario() {
     <div className="scene-bg min-h-screen rounded-2xl p-6">
       <div className="mx-auto max-w-6xl space-y-6">
         <header>
-          <h2 className="text-2xl font-bold text-ivory">어떤 장면으로 들어갈까요?</h2>
-          <p className="text-sm text-ivory-muted">오늘 연습할 시나리오를 선택하세요.</p>
+          <h2 className="text-2xl font-bold text-ivory">{scenarioCopy.title}</h2>
+          <p className="text-sm text-ivory-muted">{scenarioCopy.subtitle}</p>
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -44,7 +47,7 @@ export default function Scenario() {
             >
               <div className="mb-3 flex items-start justify-between">
                 <p className="text-2xl">{item.icon}</p>
-                <span className="text-xs text-ivory-subtle">⏱ {item.estimatedMinutes}분</span>
+                <span className="text-xs text-ivory-subtle">⏱ {scenarioCopy.durationMinutes(item.estimatedMinutes)}</span>
               </div>
               <h3 className="text-lg font-semibold text-ivory">{item.title}</h3>
               <p className="mt-1 text-sm text-ivory-muted">{item.description}</p>
@@ -58,9 +61,9 @@ export default function Scenario() {
 
         <Card className="scene-card">
           <CardHeader>
-            <CardTitle className="text-ivory">커스텀 시나리오</CardTitle>
+            <CardTitle className="text-ivory">{scenarioCopy.customScenario}</CardTitle>
             <Button variant="ghost-gold" className="w-fit" onClick={() => setIsCustomOpen((prev) => !prev)}>
-              {isCustomOpen ? '접기' : '직접 입력하기'}
+              {isCustomOpen ? scenarioCopy.collapse : scenarioCopy.expand}
             </Button>
           </CardHeader>
           {isCustomOpen && (
@@ -68,14 +71,14 @@ export default function Scenario() {
               <Textarea
                 value={scenario.freeText || ''}
                 onChange={(event) => setScenario({ freeText: event.target.value, presetKey: undefined })}
-                placeholder="또는 직접 시나리오를 입력해보세요..."
+                placeholder={scenarioCopy.customPlaceholder}
                 className="min-h-32 bg-scene-surface text-ivory"
               />
               <div className="flex justify-end">
                 <Button
                   onClick={() => setCurrentPage('character')}
                 >
-                  시작하기 →
+                  {scenarioCopy.start}
                 </Button>
               </div>
             </CardContent>
