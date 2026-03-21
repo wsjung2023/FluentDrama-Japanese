@@ -2,6 +2,14 @@
 import type { Express } from "express";
 import { z } from "zod";
 import {
+  DEFAULT_DIFFICULTY_LEVEL,
+  DEFAULT_LANGUAGE_CODE,
+  DEFAULT_SUPPORT_LANGUAGE,
+  difficultyFrameworkSchema,
+  languageCodeSchema,
+  type LanguageCode,
+} from '@shared/language';
+import {
   conversationResumeRequestSchema,
   conversationStartRequestSchema,
   conversationTurnRequestSchema,
@@ -12,6 +20,7 @@ import { checkConversationUsageLimit } from "./helpers/aiUsage";
 import { parseOrThrow } from "../lib/validate";
 import { getErrorMessage, getErrorStatus } from "../lib/apiError";
 import { logError } from "../lib/logger";
+import { getPhase2LanguagePack, getSupportLanguageDescriptor } from "../services/phase2LanguagePack";
 
 const dialogueCharacterSchema = z.object({
   name: z.string().min(1),
@@ -38,49 +47,67 @@ const conversationSpeakerSchema = z.enum(['user', 'assistant', 'character']);
 const MAX_PROMPT_HISTORY_ITEMS = 24;
 const MAX_SESSION_HISTORY_ITEMS = 120;
 
-const DEFAULT_SYSTEM_TEMPLATE = 'You are a Japanese tutor role-playing scenario {{scenarioId}}. Difficulty: {{difficulty}}. Goal: {{userGoal}}. Keep responses concise and natural Japanese.';
-const DEFAULT_INITIAL_PROMPT_TEMPLATE = '{{scenarioId}} 상황에서 {{userGoal}} 목표를 연습해봅시다.';
+
+const TTS_LANGUAGE_DETECTION_ORDER = ['ko', 'ja', 'zh', 'ar', 'th', 'vi', 'fr', 'es', 'de', 'en'] as const;
+
+type TtsDetectableLanguage = (typeof TTS_LANGUAGE_DETECTION_ORDER)[number];
+
+function detectTtsLanguage(text: string, preferredLanguage?: LanguageCode): TtsDetectableLanguage {
+  const ordered = preferredLanguage
+    ? [preferredLanguage, ...TTS_LANGUAGE_DETECTION_ORDER.filter((language) => language !== preferredLanguage)]
+    : [...TTS_LANGUAGE_DETECTION_ORDER];
+
+  for (const language of ordered) {
+    if (getPhase2LanguagePack(language).regex.test(text)) {
+      return language as TtsDetectableLanguage;
+    }
+  }
+
+  return (preferredLanguage as TtsDetectableLanguage | undefined) ?? 'en';
+}
 
 function applyTemplate(template: string, context: Record<string, string>) {
   return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key: string) => context[key] ?? '');
 }
 
 
-function computeDeterministicFeedback(userInput: string) {
+function computeDeterministicFeedback(
+  userInput: string,
+  targetLanguage = DEFAULT_LANGUAGE_CODE,
+  supportLanguage = DEFAULT_SUPPORT_LANGUAGE,
+) {
+  const pack = getPhase2LanguagePack(targetLanguage);
+  const copy = pack.getFeedback(supportLanguage);
   const normalized = userInput.trim();
   if (!normalized) {
     return {
       accuracy: 0,
-      suggestions: ['짧은 일본어 문장부터 입력해보세요.'],
-      pronunciation: '입력이 없어 발음 피드백을 제공하지 않았습니다.',
+      suggestions: [copy.emptySuggestion],
+      pronunciation: copy.emptyPronunciation,
       naturalness: 0,
       correction: null,
       betterExpression: null,
-      koreanExplanation: '입력이 비어 있어 기본 피드백만 제공합니다.',
+      explanation: copy.emptyExplanation,
+      koreanExplanation: copy.emptyExplanation,
     };
   }
 
-  const hasJapanese = /[぀-ヿ㐀-龿]/.test(normalized);
+  const hasTargetLanguageText = pack.regex.test(normalized);
   const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
-  const baseScore = hasJapanese ? 65 : 35;
+  const baseScore = hasTargetLanguageText ? 65 : 35;
   const lengthBonus = Math.min(25, tokenCount * 4);
   const punctuationBonus = /[。？！!?.]/.test(normalized) ? 5 : 0;
   const accuracy = Math.min(95, baseScore + lengthBonus + punctuationBonus);
 
   return {
     accuracy,
-    suggestions: hasJapanese
-      ? ['문장을 한 문장 더 이어서 말하면 자연스러움이 좋아집니다.']
-      : ['일본어 문자를 포함해서 다시 말해보세요.'],
-    pronunciation: hasJapanese
-      ? '전반적으로 안정적입니다. 문장 끝 억양을 조금 더 부드럽게 해보세요.'
-      : '일본어 발음 피드백을 위해 일본어 문장을 입력해주세요.',
-    naturalness: hasJapanese ? Math.min(95, accuracy - 2) : 30,
-    correction: hasJapanese ? null : '예: すみません、もう一度お願いします。',
-    betterExpression: hasJapanese ? null : '短くても 일본어 표현을 넣어보세요.',
-    koreanExplanation: hasJapanese
-      ? '문장 길이와 문장부호를 기준으로 기본 평가를 제공했습니다.'
-      : '일본어 문자가 없어 기초 점수로 평가했습니다.',
+    suggestions: [hasTargetLanguageText ? copy.successSuggestion : copy.retrySuggestion],
+    pronunciation: hasTargetLanguageText ? copy.successPronunciation : copy.retryPronunciation,
+    naturalness: hasTargetLanguageText ? Math.min(95, accuracy - 2) : 30,
+    correction: hasTargetLanguageText ? null : copy.retryCorrection,
+    betterExpression: hasTargetLanguageText ? null : copy.retryBetterExpression,
+    explanation: hasTargetLanguageText ? copy.successExplanation : copy.retryExplanation,
+    koreanExplanation: hasTargetLanguageText ? copy.successExplanation : copy.retryExplanation,
   };
 }
 
@@ -100,8 +127,12 @@ export function registerAiCoreRoutes(app: Express) {
         character: dialogueCharacterSchema,
         scenario: dialogueScenarioSchema,
         audience: z.enum(['student', 'general', 'business']).optional(),
+        targetLanguage: languageCodeSchema.optional(),
+        supportLanguage: languageCodeSchema.optional(),
+        difficultyFramework: difficultyFrameworkSchema.optional(),
+        difficultyLevel: z.string().optional(),
       });
-      const { character, scenario, audience } = parseOrThrow(dialogueSchema, req.body);
+      const { character, scenario, audience, targetLanguage, supportLanguage, difficultyFramework, difficultyLevel } = parseOrThrow(dialogueSchema, req.body);
       const userId = req.user.id;
 
       const usageCheck = await checkConversationUsageLimit(userId);
@@ -116,6 +147,10 @@ export function registerAiCoreRoutes(app: Express) {
       const { generateDialogue } = await import('../services/openai');
       const dialogueResult = await generateDialogue({
         audience: audience || 'general',
+        targetLanguage: targetLanguage || DEFAULT_LANGUAGE_CODE,
+        supportLanguage: supportLanguage || DEFAULT_SUPPORT_LANGUAGE,
+        difficultyFramework: difficultyFramework || 'jlpt',
+        difficultyLevel: difficultyLevel || DEFAULT_DIFFICULTY_LEVEL,
         character,
         scenario,
       });
@@ -126,7 +161,7 @@ export function registerAiCoreRoutes(app: Express) {
         lines: dialogueResult.lines,
         focus_phrases: dialogueResult.focus_phrases,
         character: character.name,
-        message: "대화가 생성되었습니다!",
+        message: getPhase2LanguagePack(targetLanguage || DEFAULT_LANGUAGE_CODE).dialogueCreatedMessage,
       });
     } catch (error) {
       logError('Dialogue generation error', error);
@@ -148,8 +183,9 @@ export function registerAiCoreRoutes(app: Express) {
       const ttsSchema = z.object({
         text: z.string().min(1, 'Text is required'),
         character: ttsCharacterSchema.optional(),
+        targetLanguage: languageCodeSchema.optional(),
       });
-      const { text, character } = parseOrThrow(ttsSchema, req.body);
+      const { text, character, targetLanguage } = parseOrThrow(ttsSchema, req.body);
       const userId = req.user.id;
 
       const usageCheck = await checkConversationUsageLimit(userId);
@@ -161,14 +197,17 @@ export function registerAiCoreRoutes(app: Express) {
         });
       }
 
-      const isJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text);
+      const detectedLanguage = detectTtsLanguage(text, targetLanguage);
+      const useSlowLanguageVoice = detectedLanguage === 'ja' || detectedLanguage === 'ko';
 
-      if (isJapanese) {
-        let japaneseVoices;
-        if (character?.gender === 'female') {
-          japaneseVoices = 'nova';
+      if (useSlowLanguageVoice) {
+        let languageVoice;
+        if (detectedLanguage === 'ko') {
+          languageVoice = character?.gender === 'female' ? 'nova' : 'onyx';
+        } else if (character?.gender === 'female') {
+          languageVoice = 'nova';
         } else {
-          japaneseVoices = 'onyx';
+          languageVoice = 'onyx';
         }
 
         const openaiResponse = await fetch('https://api.openai.com/v1/audio/speech', {
@@ -180,7 +219,7 @@ export function registerAiCoreRoutes(app: Express) {
           body: JSON.stringify({
             model: 'tts-1-hd',
             input: text,
-            voice: japaneseVoices,
+            voice: languageVoice,
             response_format: 'mp3',
             speed: 0.8,
           }),
@@ -196,7 +235,7 @@ export function registerAiCoreRoutes(app: Express) {
 
         return res.json({
           audioUrl: `data:audio/mp3;base64,${audioBase64}`,
-          message: '日本語音声が生成されました！',
+          message: getPhase2LanguagePack(detectedLanguage).ttsMessage,
         });
       }
 
@@ -228,7 +267,7 @@ export function registerAiCoreRoutes(app: Express) {
 
       res.json({
         audioUrl: `data:audio/mp3;base64,${audioBase64}`,
-        message: '음성이 생성되었습니다!',
+        message: getPhase2LanguagePack(detectedLanguage).ttsMessage,
       });
     } catch (error) {
       logError('TTS generation error', error);
@@ -248,7 +287,7 @@ export function registerAiCoreRoutes(app: Express) {
     }
 
     try {
-      const { scenarioId, difficulty, characterId, userGoal } = parseOrThrow(conversationStartRequestSchema, req.body);
+      const { scenarioId, difficulty, characterId, userGoal, targetLanguage } = parseOrThrow(conversationStartRequestSchema.extend({ targetLanguage: languageCodeSchema.optional() }), req.body);
       const userId = req.user.id;
 
       const usageCheck = await checkConversationUsageLimit(userId);
@@ -269,12 +308,10 @@ export function registerAiCoreRoutes(app: Express) {
       });
 
       const initialPromptTemplate = await storage.getPromptTemplate('conversation_initial_prompt', scenarioId, difficulty);
-      const initialPrompt = applyTemplate(initialPromptTemplate?.content ?? DEFAULT_INITIAL_PROMPT_TEMPLATE, {
-        scenarioId,
-        difficulty,
-        characterId,
-        userGoal,
-      });
+      const phase2Pack = getPhase2LanguagePack(targetLanguage || DEFAULT_LANGUAGE_CODE);
+      const initialPrompt = initialPromptTemplate
+        ? applyTemplate(initialPromptTemplate.content, { scenarioId, difficulty, characterId, userGoal })
+        : phase2Pack.initialPrompt(scenarioId, userGoal);
 
       res.json({
         sessionId: session.sessionId,
@@ -302,8 +339,8 @@ export function registerAiCoreRoutes(app: Express) {
     }
 
     try {
-      const parsedTurn = parseOrThrow(conversationTurnRequestSchema, req.body);
-      const { sessionId, userInput } = parsedTurn;
+      const parsedTurn = parseOrThrow(conversationTurnRequestSchema.extend({ targetLanguage: languageCodeSchema.optional(), supportLanguage: languageCodeSchema.optional() }), req.body);
+      const { sessionId, userInput, targetLanguage, supportLanguage } = parsedTurn;
       const history = parsedTurn.history ?? [];
       const userId = req.user.id;
 
@@ -336,13 +373,16 @@ export function registerAiCoreRoutes(app: Express) {
         ? history
         : baseHistory.map(({ speaker, text }) => ({ speaker, text }));
       const promptHistory = promptHistorySource.slice(-promptHistoryLimit);
+      const phase2Pack = getPhase2LanguagePack(targetLanguage || DEFAULT_LANGUAGE_CODE);
       const systemTemplate = await storage.getPromptTemplate('conversation_system', session.scenarioId, session.difficulty);
-      const systemPrompt = applyTemplate(systemTemplate?.content ?? DEFAULT_SYSTEM_TEMPLATE, {
-        scenarioId: session.scenarioId,
-        difficulty: session.difficulty,
-        characterId: session.characterId,
-        userGoal: session.userGoal,
-      });
+      const systemPrompt = systemTemplate
+        ? applyTemplate(systemTemplate.content, {
+            scenarioId: session.scenarioId,
+            difficulty: session.difficulty,
+            characterId: session.characterId,
+            userGoal: session.userGoal,
+          })
+        : phase2Pack.systemPrompt(session.scenarioId, session.difficulty, session.userGoal);
 
       const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
         {
@@ -355,7 +395,17 @@ export function registerAiCoreRoutes(app: Express) {
         const role = item.speaker === 'user' ? 'user' : 'assistant';
         messages.push({ role, content: item.text });
       });
-      messages.push({ role: 'user', content: userInput });
+      const effectiveSupportLanguage = supportLanguage || DEFAULT_SUPPORT_LANGUAGE;
+      const supportLanguageDescriptor = getSupportLanguageDescriptor(effectiveSupportLanguage);
+      const turnPrompt = phase2Pack.buildConversationPrompt({
+        characterName: session.characterId,
+        topic: session.scenarioId,
+        userInput,
+        historyText: promptHistory.map((item) => `${item.speaker}: ${item.text}`).join('\n'),
+        shouldConsiderEnding: promptHistory.length >= 10,
+        supportLanguage: effectiveSupportLanguage,
+      });
+      messages.push({ role: 'user', content: turnPrompt });
 
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -366,8 +416,9 @@ export function registerAiCoreRoutes(app: Express) {
         body: JSON.stringify({
           model: 'gpt-4o',
           messages,
-          max_tokens: 180,
+          max_tokens: 220,
           temperature: 0.7,
+          response_format: { type: 'json_object' },
         }),
       });
 
@@ -376,12 +427,52 @@ export function registerAiCoreRoutes(app: Express) {
       }
 
       const dialogueData = await openaiResponse.json();
-      const response = dialogueData.choices?.[0]?.message?.content?.trim();
-      if (!response) {
+      const rawContent = dialogueData.choices?.[0]?.message?.content?.trim();
+      if (!rawContent) {
         throw new Error('대화 응답 생성에 실패했습니다.');
       }
 
-      const feedback = computeDeterministicFeedback(userInput);
+      const parsedContent = JSON.parse(rawContent);
+      const response = typeof parsedContent.response === 'string' && parsedContent.response.trim()
+        ? parsedContent.response.trim()
+        : phase2Pack.fallbackResponse;
+
+      const feedback = computeDeterministicFeedback(
+        userInput,
+        targetLanguage || DEFAULT_LANGUAGE_CODE,
+        effectiveSupportLanguage,
+      );
+      const pronunciationGuide = typeof parsedContent.pronunciationGuide === 'string' && parsedContent.pronunciationGuide.trim()
+        ? parsedContent.pronunciationGuide.trim()
+        : phase2Pack.buildPronunciationGuide(response);
+      const supportText = effectiveSupportLanguage !== (targetLanguage || DEFAULT_LANGUAGE_CODE) && typeof parsedContent.supportTranslation === 'string' && parsedContent.supportTranslation.trim()
+        ? parsedContent.supportTranslation.trim()
+        : null;
+      const modelFeedback = typeof parsedContent.feedback === 'object' && parsedContent.feedback !== null
+        ? parsedContent.feedback as Record<string, unknown>
+        : null;
+      const explanation = typeof modelFeedback?.explanation === 'string' && modelFeedback.explanation.trim()
+        ? modelFeedback.explanation.trim()
+        : typeof modelFeedback?.koreanExplanation === 'string' && modelFeedback.koreanExplanation.trim()
+          ? modelFeedback.koreanExplanation.trim()
+          : feedback.explanation;
+      const correction = typeof modelFeedback?.correction === 'string' && modelFeedback.correction.trim()
+        ? modelFeedback.correction.trim()
+        : feedback.correction;
+      const betterExpression = typeof modelFeedback?.betterExpression === 'string' && modelFeedback.betterExpression.trim()
+        ? modelFeedback.betterExpression.trim()
+        : feedback.betterExpression;
+      const suggestions = Array.isArray(modelFeedback?.suggestions)
+        ? modelFeedback.suggestions.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).map((item) => item.trim())
+        : feedback.suggestions;
+      const mergedFeedback = {
+        ...feedback,
+        explanation,
+        koreanExplanation: explanation,
+        correction,
+        betterExpression,
+        suggestions,
+      };
 
       const now = Date.now();
       const mergedHistorySource: ConversationHistoryItem[] = [
@@ -391,16 +482,18 @@ export function registerAiCoreRoutes(app: Express) {
       ];
       const mergedHistory = mergedHistorySource.slice(-MAX_SESSION_HISTORY_ITEMS);
 
-      await storage.saveConversationTurn(sessionId, userId, mergedHistory, feedback);
+      await storage.saveConversationTurn(sessionId, userId, mergedHistory, mergedFeedback);
       await storage.incrementUsage(userId, 'conversation');
 
       res.json({
         response,
-        feedback,
+        feedback: {
+          ...mergedFeedback,
+          explanationLabel: supportLanguageDescriptor.explanationLabel,
+        },
         subtitle: {
-          ja: response,
-          ko: '한국어 해석은 다음 스프린트에서 고도화됩니다.',
-          yomigana: response,
+          support: supportText,
+          pronunciation: pronunciationGuide,
         },
         message: '대화 턴이 처리되었습니다',
       });

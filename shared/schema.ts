@@ -2,6 +2,15 @@ import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, jsonb, timestamp, boolean, integer, date, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import {
+  DEFAULT_DIFFICULTY_LEVEL,
+  DEFAULT_LANGUAGE_CODE,
+  DEFAULT_SUPPORT_LANGUAGE,
+  DEFAULT_UI_LANGUAGE,
+  difficultyFrameworkSchema,
+  languageCodeSchema,
+  romanizationModeSchema,
+} from "./language";
 
 // Session storage table for Replit Auth
 export const sessions = pgTable(
@@ -60,6 +69,11 @@ export const learningSessions = pgTable("learning_sessions", {
     presetKey?: string;
     freeText?: string;
   }>().notNull(),
+  targetLanguage: varchar("target_language").default(DEFAULT_LANGUAGE_CODE).notNull(),
+  supportLanguage: varchar("support_language").default(DEFAULT_SUPPORT_LANGUAGE).notNull(),
+  uiLanguage: varchar("ui_language").default(DEFAULT_UI_LANGUAGE).notNull(),
+  difficultyFramework: varchar("difficulty_framework").default('jlpt').notNull(),
+  difficultyLevel: varchar("difficulty_level").default(DEFAULT_DIFFICULTY_LEVEL).notNull(),
   dialogue: text("dialogue").array().default([]),
   audioUrls: text("audio_urls").array().default([]),
   focusPhrases: text("focus_phrases").array().default([]),
@@ -202,6 +216,13 @@ export const scenarioSchema = z.object({
   message: "Either preset or custom scenario is required"
 });
 
+export const subtitleSettingsSchema = z.object({
+  enabled: z.boolean().default(true),
+  showSupportTranslation: z.boolean().default(true),
+  showRomanization: z.boolean().default(true),
+  romanizationMode: romanizationModeSchema.default('kana'),
+});
+
 export const generateImageRequestSchema = z.object({
   name: z.string(),
   gender: z.enum(['male', 'female']),
@@ -212,6 +233,10 @@ export const generateImageRequestSchema = z.object({
 
 export const generateDialogueRequestSchema = z.object({
   audience: z.enum(['student', 'general', 'business']),
+  targetLanguage: languageCodeSchema.default(DEFAULT_LANGUAGE_CODE),
+  supportLanguage: languageCodeSchema.default(DEFAULT_SUPPORT_LANGUAGE),
+  difficultyFramework: difficultyFrameworkSchema.default('jlpt'),
+  difficultyLevel: z.string().min(1).default(DEFAULT_DIFFICULTY_LEVEL),
   character: characterSchema,
   scenario: scenarioSchema,
 });
@@ -229,7 +254,7 @@ export const ttsRequestSchema = z.object({
 
 export const speechRecognitionRequestSchema = z.object({
   audioBlob: z.string(), // base64 encoded audio
-  language: z.enum(['en', 'ko', 'ja']).default('en'),
+  language: languageCodeSchema.default(DEFAULT_LANGUAGE_CODE),
 });
 
 

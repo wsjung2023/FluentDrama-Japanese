@@ -1,14 +1,26 @@
 // Press-to-record hook for microphone capture and server-side speech recognition.
 import { useRef, useState } from 'react';
+import type { LanguageCode } from '@shared/language';
 import { apiRequest, safeJsonParse } from '@/lib/queryClient';
+import { getRecorderCopy } from '@/constants/uiCopy';
 
 interface UsePressToRecordOptions {
-  language?: 'en' | 'ko' | 'ja';
+  language?: LanguageCode;
   onTranscript: (transcript: string) => Promise<void> | void;
   onError: (message: string) => void;
 }
 
+
+function toSupportedRecognitionLanguage(language?: LanguageCode): 'en' | 'ko' | 'ja' | 'fr' | 'es' | 'zh' | 'de' | 'vi' | 'th' | 'ar' {
+  if (language === 'en' || language === 'ko' || language === 'ja' || language === 'fr' || language === 'es' || language === 'zh' || language === 'de' || language === 'vi' || language === 'th' || language === 'ar') {
+    return language;
+  }
+
+  return 'ja';
+}
+
 export function usePressToRecord(options: UsePressToRecordOptions) {
+  const copy = getRecorderCopy(options.language ?? 'en');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
@@ -52,7 +64,7 @@ export function usePressToRecord(options: UsePressToRecordOptions) {
       recorder.start();
       setIsRecording(true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '마이크 접근에 실패했습니다.';
+      const message = error instanceof Error ? error.message : copy.microphoneAccessFailed;
       options.onError(message);
       cleanup();
       setIsRecording(false);
@@ -86,34 +98,34 @@ export function usePressToRecord(options: UsePressToRecordOptions) {
               const payload = raw.split(',')[1] || '';
               resolve(payload);
             } catch {
-              reject(new Error('오디오 인코딩에 실패했습니다.'));
+              reject(new Error(copy.audioEncodingFailed));
             }
           };
-          reader.onerror = () => reject(new Error('오디오 파일 읽기에 실패했습니다.'));
+          reader.onerror = () => reject(new Error(copy.audioReadFailed));
           reader.readAsDataURL(audioBlob);
         } catch {
-          reject(new Error('오디오 변환에 실패했습니다.'));
+          reject(new Error(copy.audioConversionFailed));
         }
       });
 
       if (!base64Audio) {
-        throw new Error('녹음 데이터가 비어 있습니다.');
+        throw new Error(copy.emptyRecording);
       }
 
       const recognitionResponse = await safeJsonParse(
         await apiRequest('POST', '/api/speech-recognition', {
           audioBlob: base64Audio,
-          language: options.language ?? 'ja',
+          language: toSupportedRecognitionLanguage(options.language),
         }),
       );
       const transcript = (recognitionResponse as { text?: string }).text?.trim() ?? '';
       if (!transcript) {
-        throw new Error('음성을 인식하지 못했습니다. 다시 시도해주세요.');
+        throw new Error(copy.noSpeechRecognized);
       }
 
       await options.onTranscript(transcript);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '음성 처리에 실패했습니다.';
+      const message = error instanceof Error ? error.message : copy.speechProcessingFailed;
       options.onError(message);
     } finally {
       cleanup();

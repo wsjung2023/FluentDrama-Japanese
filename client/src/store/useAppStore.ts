@@ -1,5 +1,12 @@
 // Global Zustand store for audience, scenario, and conversation UI state.
 import type { ScenarioId } from "@/constants/scenarios";
+import {
+  DEFAULT_DIFFICULTY_LEVEL,
+  DEFAULT_LANGUAGE_CODE,
+  DEFAULT_SUPPORT_LANGUAGE,
+  DEFAULT_UI_LANGUAGE,
+} from "@/constants/languages";
+import type { DifficultyFramework, LanguageCode, RomanizationMode } from "@shared/language";
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -21,8 +28,9 @@ export interface Scenario {
 
 export interface SubtitleSettings {
   enabled: boolean;
-  showKoreanTranslation: boolean;
-  showPronunciation: boolean;
+  showSupportTranslation: boolean;
+  showRomanization: boolean;
+  romanizationMode: RomanizationMode;
 }
 
 export interface AppState {
@@ -31,6 +39,11 @@ export interface AppState {
   
   // Learning State
   audience: Audience | null;
+  targetLanguage: LanguageCode;
+  supportLanguage: LanguageCode;
+  uiLanguage: LanguageCode;
+  difficultyFramework: DifficultyFramework;
+  difficultyLevel: string;
   character: Character;
   scenario: Scenario;
   dialogue: string[];
@@ -47,6 +60,10 @@ export interface AppState {
   // Actions
   setCurrentPage: (page: AppState['currentPage']) => void;
   setAudience: (audience: Audience) => void;
+  setTargetLanguage: (language: LanguageCode) => void;
+  setSupportLanguage: (language: LanguageCode) => void;
+  setUiLanguage: (language: LanguageCode) => void;
+  setDifficulty: (difficulty: { framework: DifficultyFramework; level: string }) => void;
   setCharacter: (character: Partial<Character>) => void;
   setScenario: (scenario: Partial<Scenario>) => void;
   setDialogue: (dialogue: string[]) => void;
@@ -62,6 +79,11 @@ export interface AppState {
 const initialState = {
   currentPage: 'landing' as const,
   audience: null,
+  targetLanguage: DEFAULT_LANGUAGE_CODE,
+  supportLanguage: DEFAULT_SUPPORT_LANGUAGE,
+  uiLanguage: DEFAULT_UI_LANGUAGE,
+  difficultyFramework: 'jlpt' as DifficultyFramework,
+  difficultyLevel: DEFAULT_DIFFICULTY_LEVEL,
   character: {
     name: '',
     gender: 'female' as Gender,
@@ -77,8 +99,9 @@ const initialState = {
   focusPhrases: [],
   subtitleSettings: {
     enabled: true,
-    showKoreanTranslation: true,
-    showPronunciation: true,
+    showSupportTranslation: true,
+    showRomanization: true,
+    romanizationMode: 'kana' as RomanizationMode,
   },
   isLoading: false,
   loadingText: '',
@@ -94,6 +117,15 @@ export const useAppStore = create<AppState>()(
       setCurrentPage: (page) => set({ currentPage: page }),
       
       setAudience: (audience) => set({ audience }),
+
+      setTargetLanguage: (targetLanguage) => set({ targetLanguage }),
+
+      setSupportLanguage: (supportLanguage) => set({ supportLanguage }),
+
+      setUiLanguage: (uiLanguage) => set({ uiLanguage }),
+
+      setDifficulty: ({ framework: difficultyFramework, level: difficultyLevel }) =>
+        set({ difficultyFramework, difficultyLevel }),
       
       setCharacter: (character) => 
         set((state) => ({ 
@@ -127,9 +159,14 @@ export const useAppStore = create<AppState>()(
       resetState: () => set(initialState),
     }),
     {
-      name: 'fluent-drama-japanese-v1',
+      name: 'fluent-drama-language-core-v2',
       partialize: (state) => ({
         audience: state.audience,
+        targetLanguage: state.targetLanguage,
+        supportLanguage: state.supportLanguage,
+        uiLanguage: state.uiLanguage,
+        difficultyFramework: state.difficultyFramework,
+        difficultyLevel: state.difficultyLevel,
         character: state.character,
         scenario: state.scenario,
         dialogue: state.dialogue,

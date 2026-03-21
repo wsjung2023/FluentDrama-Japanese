@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAppStore } from "@/store/useAppStore";
+import { getAdminCopy, getTierLabel } from "@/constants/uiCopy";
 
 interface User {
   id: string;
@@ -26,7 +27,8 @@ export default function Admin() {
   const [newTier, setNewTier] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { setCurrentPage } = useAppStore();
+  const { setCurrentPage, uiLanguage } = useAppStore();
+  const copy = getAdminCopy(uiLanguage);
 
   const fetchUsers = async () => {
     try {
@@ -36,8 +38,8 @@ export default function Admin() {
       setUsers(data);
     } catch (error) {
       toast({
-        title: "오류",
-        description: "사용자 목록을 불러올 수 없습니다.",
+        title: copy.error,
+        description: copy.usersLoadFailed,
         variant: "destructive",
       });
     } finally {
@@ -48,8 +50,8 @@ export default function Admin() {
   const searchUser = async () => {
     if (!searchEmail) {
       toast({
-        title: "오류",
-        description: "이메일을 입력해주세요.",
+        title: copy.error,
+        description: copy.enterEmail,
         variant: "destructive",
       });
       return;
@@ -62,13 +64,13 @@ export default function Admin() {
       setSelectedUser(userData);
       
       toast({
-        title: "검색 완료",
-        description: `${userData.email} 사용자를 찾았습니다.`,
+        title: copy.searchCompleted,
+        description: copy.userFound(userData.email),
       });
     } catch (error) {
       toast({
-        title: "오류",
-        description: "사용자를 찾을 수 없습니다.",
+        title: copy.error,
+        description: copy.userNotFound,
         variant: "destructive",
       });
       setSelectedUser(null);
@@ -80,8 +82,8 @@ export default function Admin() {
   const updateUserSubscription = async () => {
     if (!selectedUser || !newTier) {
       toast({
-        title: "오류",
-        description: "사용자와 새 구독 등급을 선택해주세요.",
+        title: copy.error,
+        description: copy.selectUserAndTier,
         variant: "destructive",
       });
       return;
@@ -96,13 +98,13 @@ export default function Admin() {
       
       setSelectedUser(updatedUser);
       toast({
-        title: "업데이트 완료",
-        description: `${updatedUser.email}의 구독을 ${newTier}로 변경했습니다.`,
+        title: copy.updateCompleted,
+        description: copy.updatedSubscription(updatedUser.email, newTier),
       });
     } catch (error) {
       toast({
-        title: "오류",
-        description: "구독 업데이트에 실패했습니다.",
+        title: copy.error,
+        description: copy.updateFailed,
         variant: "destructive",
       });
     } finally {
@@ -113,8 +115,8 @@ export default function Admin() {
   const resetUserUsage = async () => {
     if (!selectedUser) {
       toast({
-        title: "오류",
-        description: "사용자를 선택해주세요.",
+        title: copy.error,
+        description: copy.selectUser,
         variant: "destructive",
       });
       return;
@@ -127,13 +129,13 @@ export default function Admin() {
       
       setSelectedUser(updatedUser);
       toast({
-        title: "초기화 완료",
-        description: `${updatedUser.email}의 사용량을 초기화했습니다.`,
+        title: copy.resetCompleted,
+        description: copy.usageReset(updatedUser.email),
       });
     } catch (error) {
       toast({
-        title: "오류",
-        description: "사용량 초기화에 실패했습니다.",
+        title: copy.error,
+        description: copy.resetFailed,
         variant: "destructive",
       });
     } finally {
@@ -144,13 +146,13 @@ export default function Admin() {
   const getTierBadge = (tier: string) => {
     switch (tier) {
       case 'premium':
-        return <Badge className="bg-purple-500">프리미엄</Badge>;
+        return <Badge className="bg-purple-500">{copy.tierPremium}</Badge>;
       case 'pro':
-        return <Badge className="bg-blue-500">프로</Badge>;
+        return <Badge className="bg-blue-500">{copy.tierPro}</Badge>;
       case 'starter':
-        return <Badge className="bg-green-500">스타터</Badge>;
+        return <Badge className="bg-green-500">{copy.tierStarter}</Badge>;
       default:
-        return <Badge variant="secondary">무료</Badge>;
+        return <Badge variant="secondary">{copy.tierFree}</Badge>;
     }
   };
 
@@ -165,10 +167,10 @@ export default function Admin() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              관리자 패널 🔧
+              {copy.title}
             </h1>
             <p className="text-gray-600 dark:text-gray-300 mt-2">
-              사용자 구독 및 데이터 관리
+              {copy.subtitle}
             </p>
           </div>
           <Button 
@@ -176,20 +178,20 @@ export default function Admin() {
             onClick={() => setCurrentPage('user-home')}
             data-testid="button-back-home"
           >
-            홈으로
+            {copy.backHome}
           </Button>
         </div>
 
         {/* User Search */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>사용자 검색</CardTitle>
-            <CardDescription>이메일로 사용자를 검색하고 관리하세요</CardDescription>
+            <CardTitle>{copy.userSearch}</CardTitle>
+            <CardDescription>{copy.userSearchDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-4">
               <Input 
-                placeholder="사용자 이메일 입력"
+                placeholder={copy.searchEmailPlaceholder}
                 value={searchEmail}
                 onChange={(e) => setSearchEmail(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && searchUser()}
@@ -200,7 +202,7 @@ export default function Admin() {
                 disabled={isLoading}
                 data-testid="button-search-user"
               >
-                {isLoading ? "검색 중..." : "검색"}
+                {isLoading ? copy.searching : copy.search}
               </Button>
             </div>
           </CardContent>
@@ -211,23 +213,23 @@ export default function Admin() {
           <Card className="mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-4">
-                사용자 정보
+                {copy.userInfo}
                 {getTierBadge(selectedUser.subscriptionTier)}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="font-semibold mb-2">기본 정보</h3>
-                  <p><strong>이메일:</strong> {selectedUser.email}</p>
-                  <p><strong>이름:</strong> {selectedUser.firstName} {selectedUser.lastName}</p>
-                  <p><strong>가입일:</strong> {new Date(selectedUser.createdAt).toLocaleDateString('ko-KR')}</p>
+                  <h3 className="font-semibold mb-2">{copy.basicInfo}</h3>
+                  <p><strong>{copy.email}:</strong> {selectedUser.email}</p>
+                  <p><strong>{copy.name}:</strong> {selectedUser.firstName} {selectedUser.lastName}</p>
+                  <p><strong>{copy.joinedAt}:</strong> {new Date(selectedUser.createdAt).toLocaleDateString(uiLanguage === 'ko' ? 'ko-KR' : uiLanguage === 'ja' ? 'ja-JP' : 'en-US')}</p>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2">구독 정보</h3>
-                  <p><strong>구독 등급:</strong> {selectedUser.subscriptionTier}</p>
-                  <p><strong>구독 상태:</strong> {selectedUser.subscriptionStatus}</p>
-                  <p><strong>월간 이미지 사용량:</strong> {selectedUser.monthlyImageCount}</p>
+                  <h3 className="font-semibold mb-2">{copy.subscriptionInfo}</h3>
+                  <p><strong>{copy.subscriptionTier}:</strong> {getTierLabel(uiLanguage, selectedUser.subscriptionTier)}</p>
+                  <p><strong>{copy.subscriptionStatus}:</strong> {selectedUser.subscriptionStatus}</p>
+                  <p><strong>{copy.monthlyImageUsage}:</strong> {selectedUser.monthlyImageCount}</p>
                 </div>
               </div>
 
@@ -235,13 +237,13 @@ export default function Admin() {
                 <div className="flex gap-2">
                   <Select value={newTier} onValueChange={setNewTier}>
                     <SelectTrigger className="w-48" data-testid="select-new-tier">
-                      <SelectValue placeholder="새 구독 등급 선택" />
+                      <SelectValue placeholder={copy.selectNewTier} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="free">무료</SelectItem>
-                      <SelectItem value="starter">스타터</SelectItem>
-                      <SelectItem value="pro">프로</SelectItem>
-                      <SelectItem value="premium">프리미엄</SelectItem>
+                      <SelectItem value="free">{copy.tierFree}</SelectItem>
+                      <SelectItem value="starter">{copy.tierStarter}</SelectItem>
+                      <SelectItem value="pro">{copy.tierPro}</SelectItem>
+                      <SelectItem value="premium">{copy.tierPremium}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button 
@@ -249,7 +251,7 @@ export default function Admin() {
                     disabled={isLoading}
                     data-testid="button-update-subscription"
                   >
-                    구독 변경
+                    {copy.changeSubscription}
                   </Button>
                 </div>
                 
@@ -259,7 +261,7 @@ export default function Admin() {
                   disabled={isLoading}
                   data-testid="button-reset-usage"
                 >
-                  사용량 초기화
+                  {copy.resetUsage}
                 </Button>
               </div>
             </CardContent>
@@ -269,8 +271,8 @@ export default function Admin() {
         {/* Recent Users */}
         <Card>
           <CardHeader>
-            <CardTitle>최근 사용자 목록</CardTitle>
-            <CardDescription>최근에 가입한 사용자들</CardDescription>
+            <CardTitle>{copy.recentUsers}</CardTitle>
+            <CardDescription>{copy.recentUsersDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             {users.length > 0 ? (
@@ -292,14 +294,14 @@ export default function Admin() {
                         }}
                         data-testid={`button-select-user-${user.id}`}
                       >
-                        선택
+                        {copy.select}
                       </Button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500">사용자가 없습니다.</p>
+              <p className="text-gray-500">{copy.noUsers}</p>
             )}
           </CardContent>
         </Card>
